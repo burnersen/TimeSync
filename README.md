@@ -4,6 +4,8 @@ A tiny NTP time synchronizer for Windows. One small executable, no
 installer, no dependencies — run it once, keep it running in a console
 window, or install it as a native Windows service with a single command.
 
+🌐 Website: [tech.burnersen.de/en/tools/timesync-en](https://tech.burnersen.de/en/tools/timesync-en/) · 🇩🇪 Auf Deutsch: [tech.burnersen.de/tools/timesync](https://tech.burnersen.de/tools/timesync/)
+
 ## Features
 
 - **Three modes:** one-shot sync, foreground loop, or Windows service

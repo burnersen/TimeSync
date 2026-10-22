@@ -1,6 +1,7 @@
-# ntp-sync
+# TimeSync
 
-A tiny NTP time synchronizer for Windows. One small executable, no
+A tiny NTP time synchronizer for Windows (program file: `ntp-sync.exe`).
+Keeps your Windows clock accurate when the built-in time sync lets you down. One small executable, no
 installer, no dependencies — run it once, keep it running in a console
 window, or install it as a native Windows service with a single command.
 
@@ -29,14 +30,14 @@ window, or install it as a native Windows service with a single command.
 ## Installation
 
 **Option 1 — Download:** get `ntp-sync.exe` from the
-[Releases](../../releases) page and put it in a permanent folder of your
+[latest release](https://github.com/burnersen/TimeSync/releases/latest) and put it in a permanent folder of your
 choice, e.g. `C:\Tools\ntp-sync\`.
 
 **Option 2 — Build from source** (requires [Go](https://go.dev)):
 
 ```
-git clone https://github.com/burnersen/ntp-sync.git
-cd ntp-sync
+git clone https://github.com/burnersen/TimeSync.git
+cd TimeSync
 go build -ldflags "-s -w" -o ntp-sync.exe .
 ```
 

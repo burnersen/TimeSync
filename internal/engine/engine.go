@@ -245,8 +245,8 @@ func abs(d time.Duration) time.Duration {
 type SlewPlan struct {
 	// RatePPM is the speed change in parts per million: +500 means the clock
 	// runs 0.05 % fast until the offset is gone.
-	RatePPM  float64
-	Duration time.Duration
+	RatePPM  float64       `json:"ratePpm"`
+	Duration time.Duration `json:"duration"`
 }
 
 // MaxSlewPPM is the speed change used for gentle corrections. 500 ppm is

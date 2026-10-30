@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<!--
+  TimeSync (https://github.com/burnersen/TimeSync)
+  Copyright (C) 2026 burnersen
+  SPDX-License-Identifier: MIT
+
+  The whole window is this one file: no build step, no npm. The look follows
+  NVENCForgeGUI (same colour names, same day and night palettes).
+  Every visible text comes from the I18N table below; frontend/*_check.js
+  checks the logic in here without a browser.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TimeSync</title>
+<style>
+:root {
+  --bg: #121214;
+  --panel: #1b1b1f;
+  --panel-2: #212127;
+  --line: #2c2c34;
+  --text: #e9e9ec;
+  --muted: #9a9aa4;
+  --accent: #ff8c1a;
+  --accent-dim: #a85c10;
+  --ok: #4ec97a;
+  --warn: #e8b53c;
+  --bad: #ef6b6b;
+  --info: #6aa8ff;
+  --on-accent: #17130c;
+  --wash: rgba(255, 140, 26, .08);
+  --ok-wash: rgba(78, 201, 122, .10);
+  --warn-wash: rgba(232, 181, 60, .10);
+  --bad-wash: rgba(239, 107, 107, .10);
+  --info-wash: rgba(106, 168, 255, .10);
+  --shadow: rgba(0, 0, 0, .45);
+  --radius: 10px;
+}
+html[data-theme="light"] {
+  --bg: #f2f2f5;
+  --panel: #ffffff;
+  --panel-2: #ebebf0;
+  --line: #d7d7de;
+  --text: #1b1b20;
+  --muted: #63636e;
+  --accent: #c25e00;
+  --accent-dim: #e8a35e;
+  --ok: #17804a;
+  --warn: #8a6108;
+  --bad: #bf3b3b;
+  --info: #2a62c9;
+  --on-accent: #ffffff;
+  --wash: rgba(194, 94, 0, .10);
+  --ok-wash: rgba(23, 128, 74, .09);
+  --warn-wash: rgba(138, 97, 8, .09);
+  --bad-wash: rgba(191, 59, 59, .08);
+  --info-wash: rgba(42, 98, 201, .08);
+  --shadow: rgba(24, 24, 30, .16);
+}
+* { box-sizing: border-box; }
+html, body {
+  height: 100%; margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.5 "Segoe UI", system-ui, sans-serif; user-select: none; overflow: hidden;
+}
+/* Blank until the theme is known, so a day user never sees a dark flash. */
+body { opacity: 0; }
+html[data-theme] body { opacity: 1; transition: opacity .12s ease; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .45; }
+a, .linkish { color: var(--accent); cursor: pointer; text-decoration: underline; background: none; border: none; padding: 0; font: inherit; }
+input, select, textarea {
+  font: inherit; color: var(--text); background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; user-select: text;
+}
+textarea { width: 100%; min-height: 110px; resize: vertical; font-family: Consolas, "Cascadia Mono", monospace; font-size: 13px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent-dim); }
+
+#shell { display: flex; flex-direction: column; height: 100%; }
+header {
+  display: flex; align-items: center; gap: 16px; padding: 12px 18px;
+  border-bottom: 1px solid var(--line); background: var(--panel);
+}
+.brand { display: flex; align-items: baseline; gap: 8px; }
+.brand b { font-size: 17px; letter-spacing: .2px; }
+.brand b span { color: var(--accent); }
+.brand small { color: var(--muted); font-size: 12px; }
+.badges { display: flex; gap: 8px; margin-left: auto; }
+.badge {
+  display: flex; align-items: center; gap: 7px; background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; color: var(--muted);
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
+.toggle { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.toggle button { background: var(--panel-2); border: none; padding: 4px 10px; font-size: 12.5px; color: var(--muted); }
+.toggle button[aria-pressed="true"] { background: var(--wash); color: var(--accent); font-weight: 600; }
+
+#body { display: flex; flex: 1; min-height: 0; }
+nav {
+  width: 178px; flex: 0 0 auto; border-right: 1px solid var(--line); background: var(--panel);
+  padding: 12px 10px; display: flex; flex-direction: column; gap: 4px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 8px; padding: 9px 11px; border-radius: 8px;
+  border: 1px solid transparent; background: none; text-align: left; width: 100%;
+}
+.nav-item.active { background: var(--panel-2); border-color: var(--accent-dim); color: var(--accent); }
+.nav-note { margin-top: auto; font-size: 11.5px; color: var(--muted); padding: 8px 11px; }
+main { flex: 1; min-width: 0; overflow-y: auto; padding: 16px 18px 22px; }
+.panel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px; margin-bottom: 14px;
+}
+.panel > h2 {
+  margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--muted); font-weight: 600;
+}
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.muted { color: var(--muted); }
+.small { font-size: 12.5px; }
+
+.btn { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; }
+.btn:hover:not(:disabled) { border-color: var(--accent-dim); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+.btn.small { padding: 4px 10px; font-size: 12.5px; }
+.shield::after { content: " \1F6E1"; font-size: .9em; }
+
+/* ---------- the two clocks ---------- */
+.clocks { display: grid; grid-template-columns: auto 1fr; gap: 4px 18px; align-items: baseline; }
+.clocks .label { color: var(--muted); font-size: 13px; }
+.clocks .time { font-size: 40px; font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: .5px; line-height: 1.15; }
+.clocks .time small { font-size: 18px; color: var(--muted); margin-left: 6px; }
+.clocks .date { color: var(--muted); font-size: 12.5px; margin-left: 10px; }
+.verdict {
+  display: flex; gap: 12px; align-items: flex-start; margin: 14px 0 12px; padding: 11px 13px;
+  border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line);
+}
+.verdict .dot { width: 12px; height: 12px; margin-top: 5px; }
+.verdict b { font-size: 15.5px; }
+.verdict.ok { background: var(--ok-wash); border-color: var(--ok); }
+.verdict.warn { background: var(--warn-wash); border-color: var(--warn); }
+.verdict.bad { background: var(--bad-wash); border-color: var(--bad); }
+.msg { margin-top: 10px; font-size: 13px; min-height: 1.5em; }
+.msg.ok { color: var(--ok); } .msg.bad { color: var(--bad); } .msg.warn { color: var(--warn); }
+
+/* ---------- banners ---------- */
+.banner {
+  display: flex; gap: 12px; align-items: flex-start; padding: 11px 14px; margin-bottom: 12px;
+  border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel);
+}
+.banner .icon { font-size: 18px; line-height: 1.2; }
+.banner b { display: block; margin-bottom: 2px; }
+.banner .text { flex: 1; font-size: 13px; }
+.banner.warn { border-color: var(--warn); background: var(--warn-wash); }
+.banner.bad { border-color: var(--bad); background: var(--bad-wash); }
+.banner.info { border-color: var(--info); background: var(--info-wash); }
+.banner .actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+/* ---------- facts and tables ---------- */
+dl.facts { display: grid; grid-template-columns: 190px 1fr; gap: 8px 14px; margin: 0; }
+dl.facts dt { color: var(--muted); }
+dl.facts dd { margin: 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th { text-align: left; color: var(--muted); font-weight: 600; padding: 5px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 5px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; vertical-align: top; }
+td.num { text-align: right; white-space: nowrap; }
+td.err { color: var(--bad); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; }
+.card .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.card .k { color: var(--muted); font-size: 12px; }
+details > summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+
+/* ---------- settings ---------- */
+.field { margin-bottom: 14px; }
+.field > label, .field > .label { display: block; font-weight: 600; margin-bottom: 4px; }
+.field .help { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+.check { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; font-weight: normal; }
+.check input { margin-top: 3px; }
+.presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.warnbox { border: 1px solid var(--warn); background: var(--warn-wash); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; margin-top: 6px; }
+.sticky-actions { position: sticky; bottom: -22px; background: var(--bg); padding: 10px 0 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div id="shell">
+  <header>
+    <div class="brand"><b>Time<span>Sync</span></b><small id="ver"></small></div>
+    <div class="badges">
+      <div class="badge"><span class="dot" id="svc-dot"></span><span id="svc-badge"></span></div>
+    </div>
+    <div class="toggle" role="group" aria-label="Language">
+      <button id="lang-de" onclick="chooseLanguage('de')">DE</button>
+      <button id="lang-en" onclick="chooseLanguage('en')">EN</button>
+    </div>
+    <div class="toggle" role="group" aria-label="Theme">
+      <button id="theme-system" onclick="chooseTheme('system')" data-i18n-title="themeSystem" data-i18n="themeAuto"></button>
+      <button id="theme-light" onclick="chooseTheme('light')" data-i18n-title="themeLight">☀</button>
+      <button id="theme-dark" onclick="chooseTheme('dark')" data-i18n-title="themeDark">☾</button>
+    </div>
+  </header>
+
+  <div id="body">
+    <nav>
+      <button class="nav-item active" id="nav-overview" onclick="showPage('overview')" data-i18n="navOverview"></button>
+      <button class="nav-item" id="nav-history" onclick="showPage('history')" data-i18n="navHistory"></button>
+      <button class="nav-item" id="nav-settings" onclick="showPage('settings')" data-i18n="navSettings"></button>
+      <button class="nav-item" id="nav-about" onclick="showPage('about')" data-i18n="navAbout"></button>
+      <div class="nav-note" id="nav-note"></div>
+    </nav>
+
+    <main>
+      <!-- ================= overview ================= -->
+      <section id="page-overview">
+        <div class="panel">
+          <div class="clocks">
+            <span class="label" data-i18n="pcTime"></span>
+            <span><span class="time" id="pc-time">--:--:--</span><span class="date" id="pc-date"></span></span>
+            <span class="label" data-i18n="realTime"></span>
+            <span><span class="time" id="real-time">--:--:--</span><span class="date" id="real-date"></span></span>
+          </div>
+          <div class="verdict" id="verdict">
+            <span class="dot" id="verdict-dot"></span>
+            <div><b id="verdict-title"></b><div class="muted small" id="verdict-sub"></div></div>
+          </div>
+          <div class="row">
+            <button class="btn primary" id="btn-sync" onclick="syncNow(false)"></button>
+            <button class="btn" id="btn-check" onclick="checkNow()" data-i18n="checkAgain"></button>
+          </div>
+          <div class="msg" id="action-msg"></div>
+        </div>
+
+        <div id="banners"></div>
+
+        <div class="panel">
+          <h2 data-i18n="statusTitle"></h2>
+          <dl class="facts">
+            <dt data-i18n="factService"></dt><dd><span id="f-service"></span><span id="f-service-actions"></span></dd>
+            <dt data-i18n="factLast"></dt><dd id="f-last"></dd>
+            <dt data-i18n="factDrift"></dt><dd id="f-drift"></dd>
+            <dt data-i18n="factTimeZone"></dt><dd><span id="f-tz"></span><button class="linkish small" onclick="openTimeSettings()" data-i18n="openTimeSettings"></button></dd>
+            <dt data-i18n="factW32"></dt><dd id="f-w32"></dd>
+          </dl>
+        </div>
+
+        <div class="panel">
+          <details>
+            <summary data-i18n="serverAnswers"></summary>
+            <table>
+              <thead><tr><th data-i18n="colServer"></th><th data-i18n="colOffset"></th><th data-i18n="colRtt"></th><th data-i18n="colInfo"></th></tr></thead>
+              <tbody id="samples"></tbody>
+            </table>
+          </details>
+        </div>
+      </section>
+
+      <!-- ================= history ================= -->
+      <section id="page-history" hidden>
+        <div class="panel">
+          <h2 data-i18n="statsTitle"></h2>
+          <div class="cards">
+            <div class="card"><div class="k" data-i18n="statDrift"></div><div class="v" id="st-drift">–</div><div class="k" id="st-drift-note"></div></div>
+            <div class="card"><div class="k" data-i18n="statBoot"></div><div class="v" id="st-boot">–</div><div class="k" id="st-boot-note"></div></div>
+            <div class="card"><div class="k" data-i18n="statWeek"></div><div class="v" id="st-week">–</div><div class="k" id="st-week-note"></div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2 data-i18n="historyTitle"></h2>
+          <table>
+            <thead><tr><th data-i18n="colTime"></th><th data-i18n="colTrigger"></th><th data-i18n="colResult"></th><th data-i18n="colOffset"></th><th data-i18n="colServers"></th></tr></thead>
+            <tbody id="history-rows"></tbody>
+          </table>
+          <p class="muted small" id="history-empty" hidden data-i18n="historyEmpty"></p>
+        </div>
+      </section>
+
+      <!-- ================= settings ================= -->
+      <section id="page-settings" hidden>
+        <div class="panel">
+          <h2 data-i18n="setServersTitle"></h2>
+          <div class="field">
+            <textarea id="set-servers" spellcheck="false"></textarea>
+            <div class="help" data-i18n="setServersHelp"></div>
+            <div class="presets">
+              <button class="btn small" onclick="applyPreset('pool')" data-i18n="presetPool"></button>
+              <button class="btn small" onclick="applyPreset('ptb')" data-i18n="presetPtb"></button>
+              <button class="btn small" onclick="applyPreset('ptbNts')" data-i18n="presetPtbNts"></button>
+              <button class="btn small" onclick="applyPreset('cloudflareNts')" data-i18n="presetCloudflare"></button>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2 data-i18n="setWhenTitle"></h2>
+          <div class="field">
+            <label for="set-interval" data-i18n="setInterval"></label>
+            <select id="set-interval"></select>
+          </div>
+          <label class="check"><input type="checkbox" id="set-start" /><span data-i18n="setOnStart"></span></label>
+          <label class="check"><input type="checkbox" id="set-resume" /><span data-i18n="setOnResume"></span></label>
+          <label class="check"><input type="checkbox" id="set-network" /><span data-i18n="setOnNetwork"></span></label>
+        </div>
+        <div class="panel">
+          <h2 data-i18n="setHowTitle"></h2>
+          <div class="field">
+            <label for="set-slew" data-i18n="setSlew"></label>
+            <select id="set-slew"></select>
+            <div class="help" data-i18n="setSlewHelp"></div>
+          </div>
+          <div class="field">
+            <label for="set-bigjump" data-i18n="setBigJump"></label>
+            <select id="set-bigjump"></select>
+            <div class="help" data-i18n="setBigJumpHelp"></div>
+          </div>
+          <label class="check"><input type="checkbox" id="set-https" /><span data-i18n="setHttps"></span></label>
+          <label class="check"><input type="checkbox" id="set-eventlog" /><span data-i18n="setEventLog"></span></label>
+        </div>
+        <div class="panel">
+          <h2 data-i18n="setWindowsTitle"></h2>
+          <label class="check"><input type="radio" name="w32" id="set-w32-takeover" /><span data-i18n="setW32Takeover"></span></label>
+          <label class="check"><input type="radio" name="w32" id="set-w32-leave" /><span data-i18n="setW32Leave"></span></label>
+          <div id="domain-box" hidden>
+            <label class="check"><input type="checkbox" id="set-domain" /><span data-i18n="setDomain"></span></label>
+            <div class="warnbox" data-i18n="setDomainWarn"></div>
+          </div>
+        </div>
+        <div class="sticky-actions">
+          <button class="btn primary shield" id="btn-save" onclick="saveSettings()" data-i18n="save"></button>
+          <button class="btn" onclick="resetSettingsForm()" data-i18n="resetDefaults"></button>
+          <button class="btn" onclick="loadSettings()" data-i18n="discard"></button>
+          <span class="msg" id="settings-msg"></span>
+        </div>
+      </section>
+
+      <!-- ================= about ================= -->
+      <section id="page-about" hidden>
+        <div class="panel">
+          <h2 data-i18n="aboutTitle"></h2>
+          <p data-i18n="aboutText"></p>
+          <p class="muted small" id="about-version"></p>
+          <div class="row">
+            <button class="btn" onclick="openURL(info.repo)" data-i18n="aboutGithub"></button>
+            <button class="btn" onclick="openURL(websiteURL())" data-i18n="aboutWebsite"></button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2 data-i18n="diagTitle"></h2>
+          <p class="small" data-i18n="diagText"></p>
+          <button class="btn" onclick="saveDiagnostics()" data-i18n="diagButton"></button>
+          <span class="msg" id="diag-msg"></span>
+        </div>
+        <div class="panel">
+          <h2 data-i18n="cliTitle"></h2>
+          <p class="small" data-i18n="cliText"></p>
+        </div>
+        <div class="panel">
+          <h2 data-i18n="licenseTitle"></h2>
+          <p class="small" data-i18n="licenseText"></p>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// =====================================================================
+// Texts. Both languages must have exactly the same keys (i18n_check.js).
+// {name} placeholders are filled by t(key, {name: value}).
+// =====================================================================
+var I18N = {
+  de: {
+    themeSystem: "Wie Windows", themeLight: "Hell", themeDark: "Dunkel", themeAuto: "Auto",
+    navOverview: "Übersicht", navHistory: "Verlauf", navSettings: "Einstellungen", navAbout: "Info",
+    pcTime: "Dein PC", realTime: "Echte Zeit",
+    checkAgain: "Erneut prüfen", syncNow: "Jetzt synchronisieren",
+    checking: "Frage die Zeitserver…", syncing: "Synchronisiere…", working: "Einen Moment…",
+    verdictUnknown: "Noch nicht geprüft",
+    verdictOk: "Deine Uhr geht genau",
+    verdictSlight: "Deine Uhr weicht leicht ab",
+    verdictBad: "Deine Uhr geht falsch",
+    verdictOffset: "Abweichung {offset}",
+    verdictNoAnswer: "Kein Zeitserver hat geantwortet",
+    verdictDisagree: "Die Zeitserver sind sich nicht einig",
+    verdictBigJump: "Große Abweichung, aber zu wenige Server bestätigen sie",
+    subChecked: "geprüft um {time}", subAgree: "{agree} von {asked} Servern einig",
+    subWebTime: "Webzeit, auf etwa 1 Sekunde genau",
+    subNoAnswer: "Im Firmennetz ist der Zeit-Port (UDP 123) oft gesperrt. Auch Virenscanner und manche Router blocken ihn.",
+    subDns: "Die Servernamen ließen sich nicht auflösen. Besteht eine Internetverbindung?",
+    subDisagree: "Zur Sicherheit wird nichts verstellt. Prüfe die Serverliste in den Einstellungen.",
+    subBigJump: "Für einen Sprung von {offset} müssen mindestens drei Server übereinstimmen. Es wurde nichts verstellt.",
+    resultStep: "Uhr gestellt, sie lag {offset} daneben.",
+    resultSlew: "Die Uhr wird sanft angeglichen ({offset} in etwa {duration}).",
+    resultNone: "Alles gut, keine Korrektur nötig ({offset}).",
+    resultMonitor: "Nur gemessen, die Uhr wurde nicht verstellt (Firmen-PC).",
+    resultFailed: "Die Uhr konnte nicht gestellt werden: {error}",
+    resultCancelled: "Abgebrochen.",
+    resultSaved: "Gespeichert.",
+    resultError: "Fehler: {error}",
+    statusTitle: "Status",
+    factService: "Hintergrund-Sync", factLast: "Letzte Synchronisierung", factDrift: "Gangabweichung",
+    factTimeZone: "Zeitzone", factW32: "Windows-Zeitdienst",
+    openTimeSettings: "Windows-Einstellungen öffnen",
+    svcActive: "aktiv, alle {minutes} Min., nächste um {time}",
+    svcActiveNoStatus: "aktiv",
+    svcMonitor: "aktiv, misst nur (Firmen-PC)",
+    svcStopped: "eingerichtet, aber gestoppt",
+    svcNone: "nicht eingerichtet",
+    svcInstall: "Einrichten", svcRemove: "Entfernen", svcUpdate: "Aktualisieren",
+    svcBadgeOn: "Hintergrund-Sync aktiv", svcBadgeOff: "Kein Hintergrund-Sync", svcBadgeStopped: "Dienst gestoppt",
+    confirmRemove: "Den Hintergrund-Sync wirklich entfernen? Der Windows-Zeitdienst wird wieder wie vorher eingestellt.",
+    lastNever: "noch nie",
+    lastEntry: "{when}, {what}",
+    driftUnknown: "noch zu wenige Messungen",
+    driftSlow: "geht pro Tag etwa {s} nach",
+    driftFast: "geht pro Tag etwa {s} vor",
+    driftCardSlow: "nach", driftCardFast: "vor",
+    tzLine: "{name}, UTC{offset}",
+    tzSummer: "Sommerzeit", tzWinter: "Normalzeit",
+    w32Takeover: "abgeschaltet, TimeSync stellt die Uhr (Original gesichert)",
+    w32Running: "läuft (stellt die Uhr selbst)",
+    w32Idle: "startet nur bei Bedarf",
+    w32Missing: "nicht vorhanden",
+    serverAnswers: "Antworten der einzelnen Server",
+    colServer: "Server", colOffset: "Abweichung", colRtt: "Laufzeit", colInfo: "Info",
+    colTime: "Zeitpunkt", colTrigger: "Anlass", colResult: "Ergebnis", colServers: "Server einig",
+    sampleStratum: "Stratum {n}", sampleNts: "verschlüsselt (NTS)", sampleWeb: "Webzeit",
+    errTimeout: "keine Antwort", errDns: "Name unbekannt", errNetwork: "Netzwerkfehler",
+    errKod: "Server bittet um Pause", errInvalid: "ungültige Antwort", errTls: "Zertifikatsproblem", errOther: "Fehler",
+    statsTitle: "Statistik", historyTitle: "Letzte Synchronisierungen",
+    statDrift: "Gangabweichung pro Tag", statBoot: "Abweichung nach dem Einschalten", statWeek: "Letzte 7 Tage",
+    statDriftNote: "aus {n} Messungen", statBootNote: "Start am {date}", statWeekNote: "{ok} erfolgreich, {fail} fehlgeschlagen",
+    historyEmpty: "Noch keine Einträge. Sobald der Hintergrund-Sync läuft oder du synchronisierst, erscheint hier der Verlauf.",
+    trigStart: "Start", trigInterval: "Intervall", trigRetry: "Wiederholung", trigResume: "Aufwachen",
+    trigNetwork: "Netzwechsel", trigManual: "Von Hand",
+    actNone: "passte", actSlew: "sanft korrigiert", actStep: "gestellt", actRefuse: "nicht vertrauenswürdig",
+    actFailed: "Fehler", actMonitor: "nur gemessen", actCheck: "geprüft",
+    setServersTitle: "Zeitserver",
+    setServersHelp: "Ein Server pro Zeile. Mindestens drei verschiedene Server sind am sichersten. Mit nts:// davor wird verschlüsselt abgefragt (NTS).",
+    presetPool: "NTP-Pool (Standard)", presetPtb: "PTB Braunschweig", presetPtbNts: "PTB mit NTS", presetCloudflare: "Cloudflare mit NTS",
+    setWhenTitle: "Wann synchronisieren",
+    setInterval: "Regelmäßig alle",
+    minutes: "{n} Minuten", hours: "{n} Stunden", hour: "1 Stunde", day: "1 Tag",
+    setOnStart: "Beim Start von Windows", setOnResume: "Nach dem Aufwachen aus Standby oder Ruhezustand",
+    setOnNetwork: "Nach einem Netzwerkwechsel (anderes WLAN, VPN, Kabel)",
+    setHowTitle: "Wie korrigieren",
+    setSlew: "Sanft angleichen bis", setSlewHelp: "Kleine Abweichungen werden über einige Minuten ausgeglichen, statt die Uhr springen zu lassen. Das merkt kein Programm.",
+    slewOff: "nie, immer direkt stellen",
+    setBigJump: "Große Sprünge ab", setBigJumpHelp: "Darüber muss die Abweichung von mindestens drei Servern bestätigt werden.",
+    setHttps: "Wenn der Zeit-Port gesperrt ist, die Zeit von Webservern holen (etwa 1 Sekunde genau)",
+    setEventLog: "Wichtige Ereignisse in die Windows-Ereignisanzeige schreiben",
+    setWindowsTitle: "Windows-Zeitdienst",
+    setW32Takeover: "TimeSync übernimmt (empfohlen). Der Windows-Zeitdienst stellt die Uhr dann nicht mehr. Seine Einstellungen werden gesichert und beim Entfernen zurückgeschrieben.",
+    setW32Leave: "Nicht anfassen. Beide stellen die Uhr, sanftes Angleichen ist dann aus.",
+    setDomain: "Auch auf diesem Firmen-PC die Uhr stellen",
+    setDomainWarn: "Dieser PC gehört zu einer Firmen-Domäne. Dort gibt normalerweise der Domänen-Server die Zeit vor, und die Anmeldung hängt davon ab. Schalte das nur ein, wenn du weißt, was du tust, oder deine IT zustimmt.",
+    save: "Speichern", resetDefaults: "Standardwerte", discard: "Verwerfen",
+    savedNeedsService: "Gespeichert. Die Einstellungen gelten, sobald der Hintergrund-Sync eingerichtet ist.",
+    invalidServers: "Bitte mindestens einen Server eintragen.",
+    aboutTitle: "Über TimeSync",
+    aboutText: "TimeSync hält die Uhr deines PCs genau. Es fragt mehrere Zeitserver, nimmt den Mittelwert, verwirft Ausreißer und stellt die Uhr nur, wenn sich die Server einig sind.",
+    aboutVersion: "Version {version}",
+    aboutGithub: "Quellcode auf GitHub", aboutWebsite: "Webseite",
+    diagTitle: "Diagnose",
+    diagText: "Erzeugt eine Textdatei mit allen technischen Infos (Windows-Version, Zeitzone, Dienst, Einstellungen, Verlauf, aktuelle Server-Antworten). Benutzernamen sind darin unkenntlich gemacht. Hänge sie an, wenn du Hilfe brauchst.",
+    diagButton: "Diagnose speichern…", diagSaved: "Gespeichert.",
+    cliTitle: "Kommandozeile",
+    cliText: "Für Skripte und Fortgeschrittene gibt es ntp-sync.exe im selben Ordner. Eine Übersicht zeigt „ntp-sync help“.",
+    licenseTitle: "Lizenz",
+    licenseText: "MIT-Lizenz. Enthält beevik/ntp und beevik/nts (BSD), go-winio (MIT), Wails (MIT) und golang.org/x (BSD).",
+    navNoteAdmin: "Läuft als Administrator",
+    bDualBootTitle: "Genau {offset} Unterschied",
+    bDualBootText: "Die Abweichung entspricht genau deiner Zeitzone. Das passiert fast immer bei Dual-Boot mit Linux: Linux speichert die Hardware-Uhr in UTC, Windows in Ortszeit. TimeSync stellt die Uhr richtig, aber nach dem nächsten Linux-Start ist sie wieder falsch, bis Linux oder Windows umgestellt ist.",
+    bDualBootAction: "So behebst du das",
+    bTimeZoneTitle: "Zeitzone prüfen",
+    bTimeZoneText: "Die Uhr weicht um volle Stunden ab. Meist ist dann die Zeitzone falsch eingestellt, nicht die Uhr.",
+    bAutoDstTitle: "Automatische Sommerzeit ist ausgeschaltet",
+    bAutoDstText: "Deine Zeitzone kennt Sommerzeit, aber Windows soll nicht automatisch umstellen. Dann geht die Uhr die Hälfte des Jahres eine Stunde falsch.",
+    bOpenSettings: "Einstellungen öffnen",
+    bBlockedTitle: "Der Zeit-Port ist gesperrt",
+    bBlockedText: "Kein NTP-Server war erreichbar, deshalb wurde die Zeit von Webservern geholt. Das ist auf etwa eine Sekunde genau.",
+    bCmosTitle: "Nach dem Einschalten lag die Uhr {offset} daneben",
+    bCmosText: "Wenn das öfter passiert, ist oft die Knopfzelle auf der Hauptplatine (CMOS-Batterie) schwach. Sie hält die Uhr am Laufen, solange der PC aus ist. TimeSync stellt die Uhr nach dem Start trotzdem richtig.",
+    bDomainTitle: "Firmen-PC",
+    bDomainText: "Dieser PC gehört zu einer Firmen-Domäne, die normalerweise die Zeit vorgibt. TimeSync misst deshalb nur. Umstellen kannst du das in den Einstellungen.",
+    bLegacyTitle: "Alter Dienst gefunden",
+    bLegacyText: "Der Dienst „ntp-sync“ von Version 1 ist noch eingerichtet. Ein Klick ersetzt ihn durch den neuen Hintergrund-Sync, deine Uhr bleibt dabei synchron.",
+    bNoServiceTitle: "Tipp: Hintergrund-Sync einrichten",
+    bNoServiceText: "Dann bleibt die Uhr dauerhaft genau, auch ohne dass dieses Fenster offen ist. Windows selbst synchronisiert oft nur einmal pro Woche.",
+    bConfigTitle: "Die Einstellungen sind beschädigt",
+    bConfigText: "Es gelten die Standardwerte. Speichere die Einstellungen einmal neu. Details: {error}",
+    bFailingTitle: "Seit {n} Versuchen keine Synchronisierung",
+    bFailingText: "Letzter Fehler: {error}",
+    bNoCliTitle: "ntp-sync.exe fehlt",
+    bNoCliText: "Ohne ntp-sync.exe im selben Ordner kann TimeSync die Uhr nicht stellen und keinen Dienst einrichten. Lade TimeSync bitte neu herunter.",
+    bSingleTitle: "Nur ein Zeitserver eingetragen",
+    bSingleText: "Ohne zweiten Server gibt es keine Gegenprobe. Mindestens drei sind sicherer.",
+    bInstallAction: "Einrichten",
+    bUpdateAction: "Jetzt aktualisieren",
+    bSettingsAction: "Zu den Einstellungen",
+    unitMs: "{n} ms", unitS: "{n} s", unitMin: "{n} Min.", unitH: "{n} Std.", unitDays: "{n} Tage",
+    ago: "vor {x}", justNow: "gerade eben"
+  },
+  en: {
+    themeSystem: "Like Windows", themeLight: "Light", themeDark: "Dark", themeAuto: "Auto",
+    navOverview: "Overview", navHistory: "History", navSettings: "Settings", navAbout: "About",
+    pcTime: "Your PC", realTime: "Actual time",
+    checkAgain: "Check again", syncNow: "Synchronize now",
+    checking: "Asking the time servers…", syncing: "Synchronizing…", working: "One moment…",
+    verdictUnknown: "Not checked yet",
+    verdictOk: "Your clock is accurate",
+    verdictSlight: "Your clock is slightly off",
+    verdictBad: "Your clock is wrong",
+    verdictOffset: "Off by {offset}",
+    verdictNoAnswer: "No time server answered",
+    verdictDisagree: "The time servers disagree",
+    verdictBigJump: "Large difference, but too few servers confirm it",
+    subChecked: "checked at {time}", subAgree: "{agree} of {asked} servers agree",
+    subWebTime: "web time, accurate to about 1 second",
+    subNoAnswer: "Company networks often block the time port (UDP 123). Antivirus software and some routers block it too.",
+    subDns: "The server names could not be resolved. Is there an internet connection?",
+    subDisagree: "To be safe, nothing was changed. Check the server list in the settings.",
+    subBigJump: "A jump of {offset} needs at least three agreeing servers. Nothing was changed.",
+    resultStep: "Clock set, it was off by {offset}.",
+    resultSlew: "The clock is being adjusted gently ({offset} over about {duration}).",
+    resultNone: "All good, no correction needed ({offset}).",
+    resultMonitor: "Measured only, the clock was not changed (company PC).",
+    resultFailed: "The clock could not be set: {error}",
+    resultCancelled: "Cancelled.",
+    resultSaved: "Saved.",
+    resultError: "Error: {error}",
+    statusTitle: "Status",
+    factService: "Background sync", factLast: "Last synchronization", factDrift: "Clock drift",
+    factTimeZone: "Time zone", factW32: "Windows Time service",
+    openTimeSettings: "Open Windows settings",
+    svcActive: "active, every {minutes} min, next at {time}",
+    svcActiveNoStatus: "active",
+    svcMonitor: "active, measuring only (company PC)",
+    svcStopped: "installed but stopped",
+    svcNone: "not set up",
+    svcInstall: "Set up", svcRemove: "Remove", svcUpdate: "Update",
+    svcBadgeOn: "Background sync on", svcBadgeOff: "No background sync", svcBadgeStopped: "Service stopped",
+    confirmRemove: "Really remove the background sync? The Windows Time service is set back to how it was.",
+    lastNever: "never",
+    lastEntry: "{when}, {what}",
+    driftUnknown: "not enough measurements yet",
+    driftSlow: "loses about {s} per day",
+    driftFast: "gains about {s} per day",
+    driftCardSlow: "slow", driftCardFast: "fast",
+    tzLine: "{name}, UTC{offset}",
+    tzSummer: "daylight saving time", tzWinter: "standard time",
+    w32Takeover: "switched off, TimeSync sets the clock (original saved)",
+    w32Running: "running (sets the clock itself)",
+    w32Idle: "starts only on demand",
+    w32Missing: "not present",
+    serverAnswers: "Answers of the individual servers",
+    colServer: "Server", colOffset: "Offset", colRtt: "Round trip", colInfo: "Info",
+    colTime: "Time", colTrigger: "Trigger", colResult: "Result", colServers: "Servers agreeing",
+    sampleStratum: "stratum {n}", sampleNts: "encrypted (NTS)", sampleWeb: "web time",
+    errTimeout: "no answer", errDns: "unknown name", errNetwork: "network error",
+    errKod: "server asks for a break", errInvalid: "invalid answer", errTls: "certificate problem", errOther: "error",
+    statsTitle: "Statistics", historyTitle: "Recent synchronizations",
+    statDrift: "Drift per day", statBoot: "Offset after switching on", statWeek: "Last 7 days",
+    statDriftNote: "from {n} measurements", statBootNote: "started {date}", statWeekNote: "{ok} succeeded, {fail} failed",
+    historyEmpty: "No entries yet. As soon as the background sync runs or you synchronize, the history appears here.",
+    trigStart: "start", trigInterval: "interval", trigRetry: "retry", trigResume: "wake up",
+    trigNetwork: "network change", trigManual: "manual",
+    actNone: "was fine", actSlew: "adjusted gently", actStep: "set", actRefuse: "not trustworthy",
+    actFailed: "error", actMonitor: "measured only", actCheck: "checked",
+    setServersTitle: "Time servers",
+    setServersHelp: "One server per line. At least three different servers are safest. Prefix nts:// for encrypted queries (NTS).",
+    presetPool: "NTP Pool (default)", presetPtb: "PTB Germany", presetPtbNts: "PTB with NTS", presetCloudflare: "Cloudflare with NTS",
+    setWhenTitle: "When to synchronize",
+    setInterval: "Regularly every",
+    minutes: "{n} minutes", hours: "{n} hours", hour: "1 hour", day: "1 day",
+    setOnStart: "When Windows starts", setOnResume: "After waking from sleep or hibernation",
+    setOnNetwork: "After a network change (other Wi-Fi, VPN, cable)",
+    setHowTitle: "How to correct",
+    setSlew: "Adjust gently up to", setSlewHelp: "Small differences are evened out over a few minutes instead of making the clock jump. No program notices.",
+    slewOff: "never, always set directly",
+    setBigJump: "Large jumps from", setBigJumpHelp: "Above this, the difference must be confirmed by at least three servers.",
+    setHttps: "If the time port is blocked, get the time from web servers (about 1 second accurate)",
+    setEventLog: "Write important events to the Windows Event Viewer",
+    setWindowsTitle: "Windows Time service",
+    setW32Takeover: "TimeSync takes over (recommended). The Windows Time service no longer sets the clock. Its settings are saved and written back on removal.",
+    setW32Leave: "Leave it alone. Both set the clock, gentle adjusting is then off.",
+    setDomain: "Set the clock on this company PC as well",
+    setDomainWarn: "This PC belongs to a company domain. There, the domain server normally provides the time, and signing in depends on it. Only switch this on if you know what you are doing or your IT agrees.",
+    save: "Save", resetDefaults: "Defaults", discard: "Discard",
+    savedNeedsService: "Saved. The settings take effect once the background sync is set up.",
+    invalidServers: "Please enter at least one server.",
+    aboutTitle: "About TimeSync",
+    aboutText: "TimeSync keeps your PC's clock accurate. It asks several time servers, takes the median, drops outliers and sets the clock only when the servers agree.",
+    aboutVersion: "Version {version}",
+    aboutGithub: "Source code on GitHub", aboutWebsite: "Website",
+    diagTitle: "Diagnostics",
+    diagText: "Creates a text file with all technical details (Windows version, time zone, service, settings, history, current server answers). User names are masked. Attach it when you ask for help.",
+    diagButton: "Save diagnostics…", diagSaved: "Saved.",
+    cliTitle: "Command line",
+    cliText: "For scripts and advanced users, ntp-sync.exe sits in the same folder. \"ntp-sync help\" shows an overview.",
+    licenseTitle: "License",
+    licenseText: "MIT license. Includes beevik/ntp and beevik/nts (BSD), go-winio (MIT), Wails (MIT) and golang.org/x (BSD).",
+    navNoteAdmin: "Running as administrator",
+    bDualBootTitle: "Exactly {offset} difference",
+    bDualBootText: "The difference equals your time zone. This almost always comes from dual boot with Linux: Linux keeps the hardware clock in UTC, Windows in local time. TimeSync sets the clock right, but after the next Linux start it is wrong again until Linux or Windows is changed.",
+    bDualBootAction: "How to fix this",
+    bTimeZoneTitle: "Check the time zone",
+    bTimeZoneText: "The clock is off by whole hours. Usually the time zone is wrong, not the clock.",
+    bAutoDstTitle: "Automatic daylight saving time is off",
+    bAutoDstText: "Your time zone has daylight saving time, but Windows is told not to switch. Then the clock is an hour off for half of the year.",
+    bOpenSettings: "Open settings",
+    bBlockedTitle: "The time port is blocked",
+    bBlockedText: "No NTP server was reachable, so the time came from web servers. That is accurate to about one second.",
+    bCmosTitle: "After switching on, the clock was {offset} off",
+    bCmosText: "If this happens often, the coin cell on the mainboard (CMOS battery) is often weak. It keeps the clock running while the PC is off. TimeSync still sets the clock right after the start.",
+    bDomainTitle: "Company PC",
+    bDomainText: "This PC belongs to a company domain, which normally provides the time. TimeSync therefore only measures. You can change this in the settings.",
+    bLegacyTitle: "Old service found",
+    bLegacyText: "The \"ntp-sync\" service of version 1 is still installed. One click replaces it with the new background sync; your clock stays in sync meanwhile.",
+    bNoServiceTitle: "Tip: set up the background sync",
+    bNoServiceText: "Then the clock stays accurate all the time, without this window being open. Windows itself often synchronizes only once a week.",
+    bConfigTitle: "The settings are damaged",
+    bConfigText: "Defaults are in use. Save the settings once to fix this. Details: {error}",
+    bFailingTitle: "No synchronization for {n} attempts",
+    bFailingText: "Last error: {error}",
+    bNoCliTitle: "ntp-sync.exe is missing",
+    bNoCliText: "Without ntp-sync.exe in the same folder, TimeSync cannot set the clock or set up the service. Please download TimeSync again.",
+    bSingleTitle: "Only one time server configured",
+    bSingleText: "Without a second server there is no cross-check. At least three are safer.",
+    bInstallAction: "Set up",
+    bUpdateAction: "Update now",
+    bSettingsAction: "Go to settings",
+    unitMs: "{n} ms", unitS: "{n} s", unitMin: "{n} min", unitH: "{n} h", unitDays: "{n} days",
+    ago: "{x} ago", justNow: "just now"
+  }
+};
+
+var PRESETS = {
+  pool: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org", "3.pool.ntp.org"],
+  ptb: ["ptbtime1.ptb.de", "ptbtime2.ptb.de", "ptbtime3.ptb.de", "ptbtime4.ptb.de"],
+  ptbNts: ["nts://ptbtime1.ptb.de", "nts://ptbtime2.ptb.de", "nts://ptbtime3.ptb.de", "nts://ptbtime4.ptb.de"],
+  cloudflareNts: ["nts://time.cloudflare.com", "nts://ptbtime1.ptb.de", "nts://ptbtime2.ptb.de", "nts://ptbtime3.ptb.de"]
+};
+var INTERVALS = [5, 15, 30, 60, 120, 240, 720, 1440];
+var SLEW_CHOICES = [0, 100, 250, 500, 1000, 2000];
+var BIGJUMP_CHOICES = [1, 5, 15, 60, 240, 1440];
+var DUAL_BOOT_HELP = "https://github.com/burnersen/TimeSync#dual-boot-with-linux";
+var NS_PER_MS = 1e6;
+
+// =====================================================================
+// State
+// =====================================================================
+var lang = "en";
+var themeChoice = "system";
+var info = { version: "", repo: "https://github.com/burnersen/TimeSync", cliFound: true, domain: false, elevated: false };
+var check = null;      // CheckView from the last measurement
+var service = null;    // ServiceView
+var hist = null;       // HistoryView
+var settings = null;   // SettingsView as loaded
+var busy = false;
+var offsetMs = null;   // trusted offset of the PC clock, null if unknown
+var offsetAt = 0;      // when offsetMs was measured (local ms)
+
+function api() {
+  return (typeof window !== "undefined" && window.go && window.go.main && window.go.main.App) || null;
+}
+
+// =====================================================================
+// Pure helpers (checked by format_check.js)
+// =====================================================================
+function t(key, vars) {
+  var table = I18N[lang] || I18N.en;
+  var s = table[key];
+  if (s === undefined) s = I18N.en[key];
+  if (s === undefined) return key;
+  if (vars) {
+    Object.keys(vars).forEach(function (k) { s = s.split("{" + k + "}").join(String(vars[k])); });
+  }
+  return s;
+}
+
+function number(n, digits) {
+  var s = n.toFixed(digits);
+  return lang === "de" ? s.replace(".", ",") : s;
+}
+
+// formatOffset turns milliseconds into "+12 ms", "-3,4 s", "+2 Std. 05 Min."
+function formatOffset(ms) {
+  var sign = ms < 0 ? "-" : "+";
+  var a = Math.abs(ms);
+  if (a < 1000) return sign + t("unitMs", { n: Math.round(a) });
+  if (a < 60000) return sign + t("unitS", { n: number(a / 1000, 1) });
+  if (a < 3600000) {
+    var m = Math.floor(a / 60000), s = Math.floor((a % 60000) / 1000);
+    return sign + t("unitMin", { n: m }) + " " + t("unitS", { n: (s < 10 ? "0" : "") + s });
+  }
+  if (a < 48 * 3600000) {
+    var h = Math.floor(a / 3600000), mm = Math.floor((a % 3600000) / 60000);
+    return sign + t("unitH", { n: h }) + " " + t("unitMin", { n: (mm < 10 ? "0" : "") + mm });
+  }
+  return sign + t("unitDays", { n: number(a / 86400000, 1) });
+}
+
+function formatDuration(ns) {
+  var s = Math.round(ns / 1e9);
+  if (s < 90) return t("unitS", { n: s });
+  return t("unitMin", { n: Math.round(s / 60) });
+}
+
+function pad(n) { return (n < 10 ? "0" : "") + n; }
+function clockText(d) { return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds()); }
+function dateText(d) {
+  return lang === "de"
+    ? pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + d.getFullYear()
+    : d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+}
+function dateTimeText(d) { return dateText(d) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+
+function agoText(thenMs, nowMs) {
+  var s = Math.round((nowMs - thenMs) / 1000);
+  if (s < 45) return t("justNow");
+  if (s < 3600) return t("ago", { x: t("unitMin", { n: Math.round(s / 60) }) });
+  if (s < 172800) return t("ago", { x: t("unitH", { n: Math.round(s / 3600) }) });
+  return t("ago", { x: t("unitDays", { n: Math.round(s / 86400) }) });
+}
+
+// severity of a trusted offset: ok below half a second, warn below 30 s.
+function severity(ms) {
+  var a = Math.abs(ms);
+  if (a < 500) return "ok";
+  if (a < 30000) return "warn";
+  return "bad";
+}
+
+// mostCommonError picks the error class most servers reported.
+function mostCommonError(samples) {
+  var count = {}, best = "";
+  (samples || []).forEach(function (s) {
+    if (!s.error) return;
+    count[s.errorKind] = (count[s.errorKind] || 0) + 1;
+    if (!best || count[s.errorKind] > count[best]) best = s.errorKind;
+  });
+  return best;
+}
+
+// describeVerdict turns an engine verdict into {cls, title, sub}.
+function describeVerdict(result, checkedAtMs) {
+  if (!result || !result.verdict) return { cls: "", title: t("verdictUnknown"), sub: "" };
+  var v = result.verdict;
+  var parts = [];
+  if (checkedAtMs) parts.push(t("subChecked", { time: clockText(new Date(checkedAtMs)) }));
+  if (v.reason === "no-valid-answers") {
+    var kind = mostCommonError(result.samples);
+    return { cls: "bad", title: t("verdictNoAnswer"), sub: kind === "dns" ? t("subDns") : t("subNoAnswer") };
+  }
+  if (v.reason === "servers-disagree") return { cls: "warn", title: t("verdictDisagree"), sub: t("subDisagree") };
+  var ms = v.offset / NS_PER_MS;
+  if (v.reason === "big-jump-needs-agreement") {
+    return { cls: "bad", title: t("verdictBigJump"), sub: t("subBigJump", { offset: formatOffset(ms) }) };
+  }
+  parts.push(t("subAgree", { agree: v.agreeing, asked: v.asked }));
+  if (v.lowPrecision) parts.push(t("subWebTime"));
+  var cls = severity(ms);
+  var title = cls === "ok" ? t("verdictOk") : cls === "warn" ? t("verdictSlight") : t("verdictBad");
+  return { cls: cls, title: title + " (" + t("verdictOffset", { offset: formatOffset(ms) }) + ")", sub: parts.join(" · ") };
+}
+
+// describeAction explains what a sync did.
+function describeAction(res) {
+  if (!res) return { cls: "bad", text: t("resultError", { error: "?" }) };
+  if (res.cancelled) return { cls: "warn", text: t("resultCancelled") };
+  var r = res.result;
+  if (!r) return res.ok ? { cls: "ok", text: t("resultSaved") } : { cls: "bad", text: t("resultError", { error: res.error || "?" }) };
+  var off = formatOffset(r.verdict.offset / NS_PER_MS);
+  switch (r.applied) {
+    case "step": return { cls: "ok", text: t("resultStep", { offset: off }) };
+    case "slew": return { cls: "ok", text: t("resultSlew", { offset: off, duration: formatDuration(r.slew ? r.slew.duration : 0) }) };
+    case "none": return { cls: "ok", text: t("resultNone", { offset: off }) };
+    case "monitor": return { cls: "warn", text: t("resultMonitor") };
+    case "failed": return { cls: "bad", text: t("resultFailed", { error: r.error || res.error || "?" }) };
+  }
+  return { cls: "bad", text: describeVerdict(r, 0).title };
+}
+
+function hasHint(result, hint) {
+  return !!(result && result.verdict && result.verdict.hints && result.verdict.hints.indexOf(hint) >= 0);
+}
+
+// computeBanners decides which notes to show above the clocks. Each banner
+// is {cls, title, text, actions: [{label, run, shield}]}; "run" names a
+// function so the list stays testable without a DOM.
+function computeBanners(s) {
+  var out = [];
+  var r = s.check && s.check.result;
+  var tz = s.check && s.check.timeZone;
+  var svc = s.service || {};
+  var st = svc.status || null;
+  var stats = (s.hist && s.hist.stats) || (st && st.stats) || null;
+  var ms = r && r.verdict ? r.verdict.offset / NS_PER_MS : 0;
+
+  if (!s.info.cliFound) out.push({ cls: "bad", title: t("bNoCliTitle"), text: t("bNoCliText"), actions: [] });
+  if (st && st.configError) out.push({ cls: "bad", title: t("bConfigTitle"), text: t("bConfigText", { error: st.configError }), actions: [{ label: t("bSettingsAction"), run: "gotoSettings" }] });
+  if (hasHint(r, "dual-boot")) out.push({ cls: "warn", title: t("bDualBootTitle", { offset: formatOffset(ms) }), text: t("bDualBootText"), actions: [{ label: t("bDualBootAction"), run: "openDualBootHelp" }] });
+  if (hasHint(r, "time-zone")) out.push({ cls: "warn", title: t("bTimeZoneTitle"), text: t("bTimeZoneText"), actions: [{ label: t("bOpenSettings"), run: "openTimeSettings" }] });
+  if (tz && tz.autoDstDisabled) out.push({ cls: "warn", title: t("bAutoDstTitle"), text: t("bAutoDstText"), actions: [{ label: t("bOpenSettings"), run: "openTimeSettings" }] });
+  if (svc.legacy) out.push({ cls: "warn", title: t("bLegacyTitle"), text: t("bLegacyText"), actions: [{ label: t("bUpdateAction"), run: "installService", shield: true }] });
+  if (stats && stats.consecutiveFailures >= 3) {
+    var last = (st && st.last && st.last.error) || "";
+    out.push({ cls: "bad", title: t("bFailingTitle", { n: stats.consecutiveFailures }), text: t("bFailingText", { error: last || "?" }), actions: [] });
+  }
+  if (hasHint(r, "ntp-blocked")) out.push({ cls: "info", title: t("bBlockedTitle"), text: t("bBlockedText"), actions: [] });
+  if (stats && stats.cmosSuspect) out.push({ cls: "info", title: t("bCmosTitle", { offset: formatOffset(stats.lastBootOffsetMs) }), text: t("bCmosText"), actions: [] });
+  if ((st && st.monitorOnly) || (s.info.domain && s.settings && !s.settings.config.allowOnDomain)) {
+    out.push({ cls: "info", title: t("bDomainTitle"), text: t("bDomainText"), actions: [{ label: t("bSettingsAction"), run: "gotoSettings" }] });
+  }
+  if (hasHint(r, "single-server")) out.push({ cls: "info", title: t("bSingleTitle"), text: t("bSingleText"), actions: [{ label: t("bSettingsAction"), run: "gotoSettings" }] });
+  if (s.service && !svc.installed && !svc.legacy && s.info.cliFound) {
+    out.push({ cls: "info", title: t("bNoServiceTitle"), text: t("bNoServiceText"), actions: [{ label: t("bInstallAction"), run: "installService", shield: true }] });
+  }
+  return out;
+}
+
+// serviceText describes the background service in one line.
+function serviceText(svc) {
+  if (!svc || (!svc.installed && !svc.legacy)) return { cls: "", text: t("svcNone"), badge: t("svcBadgeOff") };
+  if (!svc.installed && svc.legacy) return { cls: "warn", text: t("svcStopped"), badge: t("svcBadgeStopped") };
+  if (!svc.running) return { cls: "warn", text: t("svcStopped"), badge: t("svcBadgeStopped") };
+  var st = svc.status;
+  if (!st) return { cls: "ok", text: t("svcActiveNoStatus"), badge: t("svcBadgeOn") };
+  if (st.monitorOnly) return { cls: "ok", text: t("svcMonitor"), badge: t("svcBadgeOn") };
+  return { cls: "ok", text: t("svcActive", { minutes: st.intervalMinutes, time: clockText(new Date(st.nextSync)) }), badge: t("svcBadgeOn") };
+}
+
+function triggerText(trig) {
+  var map = { start: "trigStart", interval: "trigInterval", retry: "trigRetry", resume: "trigResume", network: "trigNetwork", manual: "trigManual" };
+  return map[trig] ? t(map[trig]) : trig;
+}
+
+function actionText(act) {
+  var map = { none: "actNone", slew: "actSlew", step: "actStep", refuse: "actRefuse", failed: "actFailed", monitor: "actMonitor", check: "actCheck" };
+  return map[act] ? t(map[act]) : act;
+}
+
+function driftText(stats) {
+  if (!stats || stats.driftSamples < 3) return t("driftUnknown");
+  var lag = stats.lagSecondsPerDay;
+  var s = t("unitS", { n: number(Math.abs(lag), 2) });
+  return lag >= 0 ? t("driftSlow", { s: s }) : t("driftFast", { s: s });
+}
+
+function tzText(tz) {
+  if (!tz) return "";
+  var m = tz.utcOffsetMinutes, sign = m < 0 ? "-" : "+";
+  m = Math.abs(m);
+  var off = sign + pad(Math.floor(m / 60)) + ":" + pad(m % 60);
+  var name = tz.keyName || tz.standardName || "";
+  var line = t("tzLine", { name: name, offset: off });
+  if (tz.hasDst) line += ", " + (tz.inDst ? t("tzSummer") : t("tzWinter"));
+  return line;
+}
+
+function w32Text(w) {
+  if (!w || !w.installed) return t("w32Missing");
+  if (w.takenOver) return t("w32Takeover");
+  if (w.running) return t("w32Running");
+  return t("w32Idle");
+}
+
+function sampleError(kind) {
+  var map = { timeout: "errTimeout", dns: "errDns", network: "errNetwork", kod: "errKod", invalid: "errInvalid", tls: "errTls" };
+  return t(map[kind] || "errOther");
+}
+
+// The settings form <-> config object. Kept free of the DOM so the checks
+// can run them; readForm/fillForm do the DOM part.
+function parseServerList(text) {
+  var seen = {}, out = [];
+  String(text || "").split(/[\r\n,;]+/).forEach(function (line) {
+    var s = line.trim().toLowerCase();
+    if (s && !seen[s]) { seen[s] = true; out.push(s); }
+  });
+  return out;
+}
+
+function intervalLabel(n) {
+  if (n < 60) return t("minutes", { n: n });
+  if (n === 60) return t("hour");
+  if (n === 1440) return t("day");
+  return t("hours", { n: n / 60 });
+}
+
+// =====================================================================
+// Theme and language
+// =====================================================================
+function resolvedTheme(choice) {
+  if (choice === "light" || choice === "dark") return choice;
+  try {
+    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) return "light";
+  } catch (e) { /* no media queries: fall through */ }
+  return "dark";
+}
+
+function applyTheme(choice) {
+  themeChoice = (choice === "light" || choice === "dark") ? choice : "system";
+  document.documentElement.dataset.theme = resolvedTheme(themeChoice);
+  ["system", "light", "dark"].forEach(function (c) {
+    el("theme-" + c).setAttribute("aria-pressed", c === themeChoice ? "true" : "false");
+  });
+}
+
+function chooseTheme(choice) {
+  if (choice === themeChoice) return;
+  applyTheme(choice);
+  savePrefs();
+}
+
+function applyLanguage(l) {
+  lang = (l === "de") ? "de" : "en";
+  document.documentElement.lang = lang;
+  el("lang-de").setAttribute("aria-pressed", lang === "de" ? "true" : "false");
+  el("lang-en").setAttribute("aria-pressed", lang === "en" ? "true" : "false");
+  Array.prototype.forEach.call(document.querySelectorAll("[data-i18n]"), function (n) {
+    n.textContent = t(n.getAttribute("data-i18n"));
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-i18n-title]"), function (n) {
+    n.title = t(n.getAttribute("data-i18n-title"));
+  });
+  fillSelects();
+  render();
+}
+
+function chooseLanguage(l) {
+  if (l === lang) return;
+  applyLanguage(l);
+  savePrefs();
+}
+
+function savePrefs() {
+  var a = api();
+  if (a) a.SavePrefs(lang, themeChoice);
+}
+
+// =====================================================================
+// DOM helpers
+// =====================================================================
+function el(id) { return document.getElementById(id); }
+function setText(id, text) { el(id).textContent = text; }
+function make(tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+function showPage(page) {
+  ["overview", "history", "settings", "about"].forEach(function (p) {
+    el("page-" + p).hidden = p !== page;
+    el("nav-" + p).className = "nav-item" + (p === page ? " active" : "");
+  });
+  if (page === "history") loadHistory();
+  if (page === "settings") loadSettings();
+}
+
+function setBusy(on, text) {
+  busy = on;
+  ["btn-sync", "btn-check", "btn-save"].forEach(function (id) { el(id).disabled = on; });
+  if (on) setMessage("action-msg", "", text || t("working"));
+}
+
+function setMessage(id, cls, text) {
+  var n = el(id);
+  n.className = "msg" + (cls ? " " + cls : "");
+  n.textContent = text;
+}
+
+// =====================================================================
+// Rendering
+// =====================================================================
+function tick() {
+  var now = new Date();
+  setText("pc-time", clockText(now));
+  setText("pc-date", dateText(now));
+  if (offsetMs === null) {
+    setText("real-time", "--:--:--");
+    setText("real-date", "");
+    return;
+  }
+  var real = new Date(now.getTime() + offsetMs);
+  setText("real-time", clockText(real));
+  setText("real-date", dateText(real));
+}
+
+function render() {
+  if (typeof document === "undefined") return;
+  setText("ver", info.version ? "v" + info.version : "");
+  setText("about-version", t("aboutVersion", { version: info.version || "?" }));
+  setText("nav-note", info.elevated ? t("navNoteAdmin") : "");
+
+  var d = describeVerdict(check && check.result, check && check.checkedAt);
+  el("verdict").className = "verdict" + (d.cls ? " " + d.cls : "");
+  el("verdict-dot").className = "dot" + (d.cls ? " " + d.cls : "");
+  setText("verdict-title", d.title);
+  setText("verdict-sub", d.sub);
+
+  var needsPrompt = !(service && service.running);
+  el("btn-sync").textContent = t("syncNow");
+  el("btn-sync").className = "btn primary" + (needsPrompt ? " shield" : "");
+
+  var sv = serviceText(service);
+  setText("f-service", sv.text);
+  setText("svc-badge", sv.badge);
+  el("svc-dot").className = "dot" + (sv.cls ? " " + sv.cls : "");
+  renderServiceActions();
+
+  var st = service && service.status;
+  var last = (st && st.last) || (hist && hist.entries && hist.entries.length ? hist.entries[hist.entries.length - 1] : null);
+  setText("f-last", last ? t("lastEntry", { when: agoText(Date.parse(last.time), Date.now()), what: actionText(last.action) + " " + formatOffset(last.offsetMs) }) : t("lastNever"));
+  setText("f-drift", driftText((hist && hist.stats) || (st && st.stats)));
+  setText("f-tz", tzText(check && check.timeZone));
+  setText("f-w32", w32Text(service && service.w32time));
+
+  renderBanners();
+  renderSamples();
+  tick();
+}
+
+function renderServiceActions() {
+  var box = el("f-service-actions");
+  clear(box);
+  if (!service || !info.cliFound) return;
+  var b;
+  if (!service.installed || service.legacy) {
+    b = make("button", "btn small shield", service.legacy ? t("svcUpdate") : t("svcInstall"));
+    b.onclick = installService;
+    box.appendChild(b);
+  }
+  if (service.installed) {
+    b = make("button", "btn small shield", t("svcRemove"));
+    b.onclick = uninstallService;
+    box.appendChild(b);
+  }
+}
+
+function renderBanners() {
+  var box = el("banners");
+  clear(box);
+  computeBanners({ check: check, service: service, hist: hist, settings: settings, info: info }).forEach(function (bn) {
+    var n = make("div", "banner " + bn.cls);
+    n.appendChild(make("span", "icon", bn.cls === "info" ? "ℹ" : "⚠"));
+    var body = make("div", "text");
+    body.appendChild(make("b", "", bn.title));
+    body.appendChild(make("span", "", bn.text));
+    if (bn.actions.length) {
+      var acts = make("div", "actions");
+      bn.actions.forEach(function (a) {
+        var btn = make("button", "btn small" + (a.shield ? " shield" : ""), a.label);
+        btn.onclick = function () { ACTIONS[a.run](); };
+        acts.appendChild(btn);
+      });
+      body.appendChild(acts);
+    }
+    n.appendChild(body);
+    box.appendChild(n);
+  });
+}
+
+function renderSamples() {
+  var body = el("samples");
+  clear(body);
+  var samples = (check && check.result && check.result.samples) || [];
+  samples.forEach(function (s) {
+    var tr = make("tr");
+    tr.appendChild(make("td", "", s.server));
+    if (s.error) {
+      tr.appendChild(make("td", "err", sampleError(s.errorKind)));
+      tr.appendChild(make("td", "num", ""));
+      tr.appendChild(make("td", "err", s.error));
+    } else {
+      tr.appendChild(make("td", "num", formatOffset(s.offset / NS_PER_MS)));
+      tr.appendChild(make("td", "num", t("unitMs", { n: Math.round(s.rtt / NS_PER_MS) })));
+      var extra = s.kind === "https" ? t("sampleWeb") : t("sampleStratum", { n: s.stratum }) + (s.kind === "nts" ? ", " + t("sampleNts") : "");
+      tr.appendChild(make("td", "", extra + (s.address ? " · " + s.address : "")));
+    }
+    body.appendChild(tr);
+  });
+}
+
+function renderHistory() {
+  var rows = el("history-rows");
+  clear(rows);
+  var entries = (hist && hist.entries) || [];
+  el("history-empty").hidden = entries.length > 0;
+  entries.slice().reverse().forEach(function (e) {
+    var tr = make("tr");
+    tr.appendChild(make("td", "", dateTimeText(new Date(Date.parse(e.time)))));
+    tr.appendChild(make("td", "", triggerText(e.trigger)));
+    tr.appendChild(make("td", e.error ? "err" : "", actionText(e.action) + (e.error ? ": " + e.error : "")));
+    tr.appendChild(make("td", "num", e.asked || e.valid ? formatOffset(e.offsetMs) : ""));
+    tr.appendChild(make("td", "num", e.agreeing + "/" + e.asked));
+    rows.appendChild(tr);
+  });
+  var st = (hist && hist.stats) || {};
+  var known = st.driftSamples >= 3;
+  setText("st-drift", known ? t("unitS", { n: number(Math.abs(st.lagSecondsPerDay), 2) }) + " " + (st.lagSecondsPerDay >= 0 ? t("driftCardSlow") : t("driftCardFast")) : "–");
+  setText("st-drift-note", known ? t("statDriftNote", { n: st.driftSamples }) : t("driftUnknown"));
+  setText("st-boot", st.lastBootTime ? formatOffset(st.lastBootOffsetMs) : "–");
+  setText("st-boot-note", st.lastBootTime ? t("statBootNote", { date: dateTimeText(new Date(Date.parse(st.lastBootTime))) }) : "");
+  setText("st-week", (st.successes7d || 0) + " / " + ((st.successes7d || 0) + (st.failures7d || 0)));
+  setText("st-week-note", t("statWeekNote", { ok: st.successes7d || 0, fail: st.failures7d || 0 }));
+}
+
+// =====================================================================
+// Settings form
+// =====================================================================
+function fillSelects() {
+  function fill(id, values, label) {
+    var sel = el(id), keep = sel.value;
+    clear(sel);
+    values.forEach(function (v) {
+      var o = make("option", "", label(v));
+      o.value = String(v);
+      sel.appendChild(o);
+    });
+    if (keep) sel.value = keep;
+  }
+  fill("set-interval", INTERVALS, intervalLabel);
+  fill("set-slew", SLEW_CHOICES, function (v) { return v === 0 ? t("slewOff") : t("unitMs", { n: v }); });
+  fill("set-bigjump", BIGJUMP_CHOICES, function (v) { return v < 60 ? t("unitMin", { n: v }) : v === 60 ? t("hour") : v === 1440 ? t("day") : t("hours", { n: v / 60 }); });
+}
+
+// closest picks the choice nearest to a value from the file, so a hand
+// edited value still shows something sensible.
+function closest(values, v) {
+  return values.reduce(function (best, x) { return Math.abs(x - v) < Math.abs(best - v) ? x : best; }, values[0]);
+}
+
+function fillForm(cfg) {
+  el("set-servers").value = (cfg.servers || []).join("\n");
+  el("set-interval").value = String(closest(INTERVALS, cfg.intervalMinutes));
+  el("set-start").checked = !!cfg.syncOnStart;
+  el("set-resume").checked = !!cfg.syncOnResume;
+  el("set-network").checked = !!cfg.syncOnNetworkChange;
+  el("set-slew").value = String(closest(SLEW_CHOICES, cfg.slewMaxMs));
+  el("set-bigjump").value = String(closest(BIGJUMP_CHOICES, cfg.bigJumpMinutes));
+  el("set-https").checked = !!cfg.httpsFallback;
+  el("set-eventlog").checked = !!cfg.eventLog;
+  el("set-w32-takeover").checked = cfg.w32timeMode !== "leave";
+  el("set-w32-leave").checked = cfg.w32timeMode === "leave";
+  el("set-domain").checked = !!cfg.allowOnDomain;
+  el("domain-box").hidden = !info.domain;
+}
+
+function readForm(base) {
+  var cfg = JSON.parse(JSON.stringify(base || {}));
+  cfg.servers = parseServerList(el("set-servers").value);
+  cfg.intervalMinutes = parseInt(el("set-interval").value, 10);
+  cfg.syncOnStart = el("set-start").checked;
+  cfg.syncOnResume = el("set-resume").checked;
+  cfg.syncOnNetworkChange = el("set-network").checked;
+  cfg.slewMaxMs = parseInt(el("set-slew").value, 10);
+  cfg.bigJumpMinutes = parseInt(el("set-bigjump").value, 10);
+  cfg.httpsFallback = el("set-https").checked;
+  cfg.eventLog = el("set-eventlog").checked;
+  cfg.w32timeMode = el("set-w32-leave").checked ? "leave" : "takeover";
+  cfg.allowOnDomain = el("set-domain").checked;
+  return cfg;
+}
+
+function applyPreset(name) {
+  el("set-servers").value = PRESETS[name].join("\n");
+}
+
+function resetSettingsForm() {
+  if (settings) fillForm(settings.defaults);
+  setMessage("settings-msg", "", "");
+}
+
+function loadSettings() {
+  var a = api();
+  if (!a) return;
+  a.GetSettings().then(function (v) {
+    settings = v;
+    fillForm(v.config);
+    setMessage("settings-msg", v.error ? "bad" : "", v.error || "");
+    render();
+  });
+}
+
+function saveSettings() {
+  var a = api();
+  if (!a || busy) return;
+  var cfg = readForm(settings && settings.config);
+  if (!cfg.servers.length) { setMessage("settings-msg", "bad", t("invalidServers")); return; }
+  a.ValidateSettings(cfg).then(function (problem) {
+    if (problem) { setMessage("settings-msg", "bad", problem); return; }
+    setBusy(true);
+    setMessage("settings-msg", "", t("working"));
+    a.SaveSettings(cfg).then(function (res) {
+      setBusy(false);
+      setMessage("action-msg", "", "");
+      var d = describeAction(res);
+      if (res.ok && service && !service.installed) d = { cls: "ok", text: t("savedNeedsService") };
+      setMessage("settings-msg", d.cls, d.text);
+      if (res.ok) { loadSettings(); refreshService(); }
+    });
+  });
+}
+
+// =====================================================================
+// Actions
+// =====================================================================
+function checkNow() {
+  var a = api();
+  if (!a || busy) return;
+  setBusy(true, t("checking"));
+  a.Check().then(function (v) {
+    setBusy(false);
+    setMessage("action-msg", "", "");
+    applyCheck(v);
+  });
+}
+
+function applyCheck(v) {
+  check = v;
+  var r = v && v.result;
+  if (r && r.verdict && r.verdict.action !== "refuse") {
+    offsetMs = r.verdict.offset / NS_PER_MS;
+    offsetAt = Date.now();
+  } else {
+    offsetMs = null;
+  }
+  render();
+}
+
+function syncNow(force) {
+  var a = api();
+  if (!a || busy) return;
+  setBusy(true, t("syncing"));
+  a.SyncNow(!!force).then(function (res) {
+    setBusy(false);
+    var d = describeAction(res);
+    setMessage("action-msg", d.cls, d.text);
+    if (res.result) {
+      var r = res.result;
+      check = { result: r, checkedAt: Date.now(), timeZone: check && check.timeZone };
+      if (r.applied === "step") offsetMs = 0;
+      else if (r.verdict && r.verdict.action !== "refuse") offsetMs = r.verdict.offset / NS_PER_MS;
+      render();
+      // After a step the clock is right; confirm with a fresh measurement.
+      if (r.applied === "step" || r.applied === "slew") setTimeout(checkNow, 4000);
+    }
+    refreshService();
+    loadHistory();
+  });
+}
+
+function installService() {
+  var a = api();
+  if (!a || busy) return;
+  setBusy(true);
+  a.InstallService(0).then(function (res) {
+    setBusy(false);
+    var d = describeAction(res);
+    setMessage("action-msg", d.cls, d.text);
+    refreshService();
+  });
+}
+
+function uninstallService() {
+  var a = api();
+  if (!a || busy) return;
+  if (!window.confirm(t("confirmRemove"))) return;
+  setBusy(true);
+  a.UninstallService(false).then(function (res) {
+    setBusy(false);
+    var d = describeAction(res);
+    setMessage("action-msg", d.cls, d.text);
+    refreshService();
+  });
+}
+
+function refreshService() {
+  var a = api();
+  if (!a) return;
+  a.Service().then(function (v) { service = v; render(); });
+}
+
+function loadHistory() {
+  var a = api();
+  if (!a) return;
+  a.History(200).then(function (v) { hist = v; renderHistory(); render(); });
+}
+
+function saveDiagnostics() {
+  var a = api();
+  if (!a) return;
+  setMessage("diag-msg", "", t("working"));
+  a.SaveDiagnostics().then(function (res) {
+    if (res.cancelled) setMessage("diag-msg", "", "");
+    else setMessage("diag-msg", res.ok ? "ok" : "bad", res.ok ? t("diagSaved") : t("resultError", { error: res.error }));
+  });
+}
+
+function openURL(url) { var a = api(); if (a) a.OpenURL(url); }
+function openTimeSettings() { openURL("ms-settings:dateandtime"); }
+function websiteURL() { return lang === "de" ? "https://tech.burnersen.de/tools/timesync/" : "https://tech.burnersen.de/en/tools/timesync-en/"; }
+
+// Banner buttons refer to these by name.
+var ACTIONS = {
+  installService: function () { installService(); },
+  openTimeSettings: function () { openTimeSettings(); },
+  openDualBootHelp: function () { openURL(DUAL_BOOT_HELP); },
+  gotoSettings: function () { showPage("settings"); }
+};
+
+// =====================================================================
+// Start
+// =====================================================================
+function init() {
+  var a = api();
+  if (!a) { applyTheme("system"); applyLanguage("en"); return; }
+  a.Startup().then(function (s) {
+    info = s;
+    applyTheme(s.theme);
+    applyLanguage(s.language);
+    setInterval(tick, 250);
+    checkNow();
+    refreshService();
+    loadHistory();
+    loadSettings();
+    setInterval(refreshService, 15000);
+    // A fresh measurement every ten minutes while the window is open.
+    setInterval(function () { if (!busy) checkNow(); }, 600000);
+  });
+  try {
+    window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", function () {
+      if (themeChoice === "system") applyTheme("system");
+    });
+  } catch (e) { /* older web views: the theme follows on the next start */ }
+}
+
+if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>

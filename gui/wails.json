@@ -1,0 +1,17 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "TimeSync",
+  "outputfilename": "TimeSync",
+  "frontend:install": "",
+  "frontend:build": "",
+  "author": {
+    "name": "burnersen"
+  },
+  "info": {
+    "companyName": "burnersen",
+    "productName": "TimeSync",
+    "productVersion": "2.0.0",
+    "copyright": "Copyright 2026 burnersen, MIT license",
+    "comments": "Keeps the Windows clock accurate"
+  }
+}

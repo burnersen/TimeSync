@@ -45,7 +45,7 @@ type Status struct {
 	IntervalMinutes int            `json:"intervalMinutes"`
 	NextSync        time.Time      `json:"nextSync"`
 	Syncing         bool           `json:"syncing"`
-	SlewUntil       time.Time      `json:"slewUntil,omitempty"`
+	SlewUntil       time.Time      `json:"slewUntil,omitzero"`
 	MonitorOnly     bool           `json:"monitorOnly"`
 	Domain          string         `json:"domain,omitempty"`
 	W32Time         string         `json:"w32time"`

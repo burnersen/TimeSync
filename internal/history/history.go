@@ -161,13 +161,13 @@ type Stats struct {
 
 	// The most recent first measurement after switching on.
 	LastBootOffsetMs float64   `json:"lastBootOffsetMs"`
-	LastBootTime     time.Time `json:"lastBootTime,omitempty"`
+	LastBootTime     time.Time `json:"lastBootTime,omitzero"`
 	// CMOSSuspect: the clock was far off right after switching on, and not
 	// in a way explained by dual boot or a time zone mix-up.
 	CMOSSuspect bool `json:"cmosSuspect"`
 
-	LastSuccess         time.Time `json:"lastSuccess,omitempty"`
-	LastAttempt         time.Time `json:"lastAttempt,omitempty"`
+	LastSuccess         time.Time `json:"lastSuccess,omitzero"`
+	LastAttempt         time.Time `json:"lastAttempt,omitzero"`
 	ConsecutiveFailures int       `json:"consecutiveFailures"`
 	Successes7d         int       `json:"successes7d"`
 	Failures7d          int       `json:"failures7d"`

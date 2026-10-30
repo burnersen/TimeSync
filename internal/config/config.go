@@ -26,7 +26,9 @@ const (
 
 // Limits for user-provided values.
 const (
-	MinIntervalMinutes = 5
+	// At most four times an hour: the NTP Pool's guidance for clients
+	// ("once or twice a day to 4-5 times an hour"), and plenty for a PC.
+	MinIntervalMinutes = 15
 	MaxIntervalMinutes = 1440
 	MaxServers         = 10
 	MaxSlewMs          = 5000
@@ -257,6 +259,10 @@ func Load(path string) (Config, error) {
 		return Default(), fmt.Errorf("%s is damaged (%v), using defaults", path, err)
 	}
 	cfg.Normalize()
+	// Older files may still ask for a shorter interval than allowed today.
+	if cfg.IntervalMinutes > 0 && cfg.IntervalMinutes < MinIntervalMinutes {
+		cfg.IntervalMinutes = MinIntervalMinutes
+	}
 	if err := cfg.Validate(); err != nil {
 		return Default(), fmt.Errorf("%s: %v, using defaults", path, err)
 	}

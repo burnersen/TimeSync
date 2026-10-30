@@ -42,7 +42,9 @@ const (
 	// so nobody can turn the service into a load generator for the pool.
 	manualMinGap = 10 * time.Second
 	// Retry delays after failures double from retryBase up to retryMax.
-	retryBase = 10 * time.Second
+	// Most failures mean "no network yet", which costs the servers nothing,
+	// but the delays still grow quickly so a real outage is not hammered.
+	retryBase = 30 * time.Second
 	retryMax  = 20 * time.Minute
 	// After this many failures in a row the event log gets a warning.
 	failureWarnAfter = 3

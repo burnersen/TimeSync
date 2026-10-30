@@ -162,7 +162,7 @@ the program file is replaced.
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `servers` | Cloudflare, PTB (2), Microsoft | NTP servers; `host`, `host:port`, `nts://host` |
-| `intervalMinutes` | 60 | regular interval (5 to 1440) |
+| `intervalMinutes` | 60 | regular interval (15 to 1440) |
 | `syncOnStart`, `syncOnResume`, `syncOnNetworkChange` | true | extra synchronizations |
 | `minCorrectionMs` | 2 | smaller differences are left alone |
 | `slewMaxMs` | 500 | gentle correction up to this size; 0 always steps |

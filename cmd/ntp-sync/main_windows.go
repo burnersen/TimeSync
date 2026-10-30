@@ -323,7 +323,10 @@ func doLoop(cmd cli.Command) int {
 		fmt.Fprintf(os.Stderr, "[ERROR] %v\n", errNoAdmin)
 		return exitNoAdmin
 	}
-	interval := time.Duration(max(cmd.Interval, 1)) * time.Minute
+	if cmd.Interval < config.MinIntervalMinutes {
+		fmt.Printf("[INFO] Time servers should not be asked more often than every %d minutes; using %d.\n", config.MinIntervalMinutes, config.MinIntervalMinutes)
+	}
+	interval := time.Duration(max(cmd.Interval, config.MinIntervalMinutes)) * time.Minute
 	fmt.Printf("[*] Synchronizing every %v, press Ctrl+C to stop...\n", interval)
 	for {
 		cfg := loadConfig(cmd)

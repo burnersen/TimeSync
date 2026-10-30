@@ -62,7 +62,7 @@ func TestLoadDamagedFileFallsBack(t *testing.T) {
 	if err == nil || cfg.IntervalMinutes != 60 {
 		t.Fatalf("want defaults plus error, got %+v %v", cfg, err)
 	}
-	os.WriteFile(path, []byte(`{"intervalMinutes": 1}`), 0o644)
+	os.WriteFile(path, []byte(`{"intervalMinutes": 99999}`), 0o644)
 	cfg, err = Load(path)
 	if err == nil || cfg.IntervalMinutes != 60 {
 		t.Fatalf("invalid values must not be used: %+v %v", cfg, err)
@@ -94,5 +94,14 @@ func TestSet(t *testing.T) {
 	}
 	if err := c.Set("nonsense", "1"); err == nil {
 		t.Fatal("unknown key accepted")
+	}
+}
+
+func TestOldShortIntervalIsRaised(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	os.WriteFile(path, []byte(`{"intervalMinutes": 5, "servers": ["ptbtime1.ptb.de"]}`), 0o644)
+	cfg, err := Load(path)
+	if err != nil || cfg.IntervalMinutes != MinIntervalMinutes || cfg.Servers[0] != "ptbtime1.ptb.de" {
+		t.Fatalf("%+v %v", cfg, err)
 	}
 }

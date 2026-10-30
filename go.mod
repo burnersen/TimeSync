@@ -1,5 +1,13 @@
-module github.com/burnersen/ntp-sync
+module github.com/burnersen/TimeSync
 
-go 1.26.4
+go 1.26.10
 
-require golang.org/x/sys v0.46.0
+require (
+	github.com/Microsoft/go-winio v0.6.4 // indirect
+	github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1 // indirect
+	github.com/beevik/ntp v1.6.0 // indirect
+	github.com/beevik/nts v0.3.3 // indirect
+	github.com/secure-io/siv-go v0.0.0-20180922214919-5ff40651e2c4 // indirect
+	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+)

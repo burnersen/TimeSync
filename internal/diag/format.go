@@ -52,6 +52,9 @@ func FormatSample(s source.Sample) string {
 	if !s.OK() {
 		return fmt.Sprintf("%-28s %-5s %-22s FAILED (%s) %s", s.Server, s.Kind, s.Address, s.ErrKind, s.Err)
 	}
+	if s.Kind == source.KindHTTPS {
+		return fmt.Sprintf("%-28s %-5s %-22s %12s  rtt %4d ms  (web time)", s.Server, s.Kind, "", FormatOffset(s.Offset), s.RTT.Milliseconds())
+	}
 	return fmt.Sprintf("%-28s %-5s %-22s %12s  rtt %4d ms  stratum %d  ref %s",
 		s.Server, s.Kind, s.Address, FormatOffset(s.Offset), s.RTT.Milliseconds(), s.Stratum, s.RefID)
 }

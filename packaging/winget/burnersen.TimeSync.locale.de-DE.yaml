@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.9.0.schema.json
+PackageIdentifier: burnersen.TimeSync
+PackageVersion: {{VERSION}}
+PackageLocale: de-DE
+Publisher: burnersen
+PackageName: TimeSync
+License: MIT
+ShortDescription: Hält die Windows-Uhr mit mehreren NTP-Servern genau.
+Description: |-
+  TimeSync hält die Windows-Uhr genau. Es fragt mehrere Zeitserver, nimmt den Mittelwert, verwirft
+  Ausreißer und stellt die Uhr nur, wenn sich die Server einig sind. Ein kleiner Hintergrund-Dienst
+  synchronisiert beim Start, nach dem Aufwachen und nach einem Netzwechsel. Das Fenster erklärt in
+  Klartext, was los ist (Dual-Boot mit Linux, falsche Zeitzone, schwache CMOS-Batterie, gesperrter Port).
+ManifestType: locale
+ManifestVersion: 1.9.0

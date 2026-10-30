@@ -1,0 +1,100 @@
+# Checks every push and pull request. Nothing is published here.
+#
+# Linux runs the tests (most of TimeSync is plain logic and runs anywhere)
+# and checks that the Windows code compiles for x64 and ARM64. Windows then
+# builds the real programs once more, natively.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # gofmt -l only lists offenders; turning its output into the verdict
+      # is the point of this step.
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l . )
+          if [ -n "$unformatted" ]; then echo "::error::not gofmt-clean:"; echo "$unformatted"; exit 1; fi
+
+      - name: go vet (linux, windows x64, windows arm64)
+        run: |
+          go vet ./...
+          GOOS=windows GOARCH=amd64 go vet ./...
+          GOOS=windows GOARCH=arm64 go vet ./...
+          (cd gui && GOOS=windows go vet .)
+
+      - name: go test
+        run: go test -race ./...
+
+      - name: govulncheck
+        # Installed first: "GOOS=windows go run" would build the scanner
+        # itself for Windows. As a Linux program it reads GOOS and checks
+        # the Windows build.
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+          govulncheck ./...
+          GOOS=windows govulncheck ./...
+          (cd gui && GOOS=windows govulncheck .)
+
+      # The window's own script, checked without a browser. An empty list
+      # would pass while checking nothing, so it fails instead.
+      - name: window checks
+        run: |
+          shopt -s nullglob
+          checks=(gui/frontend/*_check.js)
+          if [ ${#checks[@]} -eq 0 ]; then echo "::error::no window checks found"; exit 1; fi
+          for c in "${checks[@]}"; do echo "--- $c"; node "$c"; done
+
+  build-windows:
+    runs-on: windows-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: go test (native Windows)
+        run: go test ./...
+      - name: build ntp-sync.exe
+        run: go build -trimpath -o ntp-sync.exe ./cmd/ntp-sync
+      - name: build TimeSync.exe
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0
+          cd gui
+          wails build -platform windows/amd64 -skipbindings -trimpath
+      - name: smoke test
+        shell: pwsh
+        run: |
+          ./ntp-sync.exe version
+          ./ntp-sync.exe help
+          ./ntp-sync.exe check
+          if ($LASTEXITCODE -gt 3) { exit 1 }
+          exit 0
+
+      # A test build to try out, downloadable from the run's summary page
+      # for two weeks. Not a release: unsigned and without version number.
+      - name: collect test build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force test-build | Out-Null
+          Copy-Item ntp-sync.exe, gui/build/bin/TimeSync.exe, LICENSE, README.md, THIRD_PARTY_NOTICES.md test-build/
+      - uses: actions/upload-artifact@v5
+        with:
+          name: TimeSync-test-build-x64
+          path: test-build/
+          retention-days: 14

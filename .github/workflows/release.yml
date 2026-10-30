@@ -1,0 +1,97 @@
+# Builds a release when a version tag is pushed, e.g.:
+#
+#   git tag v2.0.0 && git push origin v2.0.0
+#
+# The result is a DRAFT release: nothing becomes public until it is
+# reviewed and published by hand on GitHub.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: version from tag
+        id: v
+        shell: bash
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "winver=$(echo "$v" | sed -E 's/^([0-9]+)\.([0-9]+)\.([0-9]+).*/\1.\2.\3.0/')" >> "$GITHUB_OUTPUT"
+
+      - name: tests
+        shell: bash
+        run: |
+          go test ./...
+          for c in gui/frontend/*_check.js; do node "$c"; done
+
+      - name: tools
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0
+          choco install innosetup --no-progress -y
+
+      - name: build
+        shell: bash
+        run: |
+          set -euo pipefail
+          V="${{ steps.v.outputs.version }}"
+          W="${{ steps.v.outputs.winver }}"
+          LDFLAGS="-s -w -X github.com/burnersen/TimeSync/internal/version.Version=$V"
+          (cd cmd/ntp-sync && go run github.com/tc-hib/go-winres@v0.3.3 make --in winres/winres.json --out rsrc \
+            --arch amd64,arm64 --product-version "$W" --file-version "$W")
+          sed -i -E "s/\"productVersion\": \"[^\"]*\"/\"productVersion\": \"${W%.0}\"/" gui/wails.json
+          mkdir -p dist
+          for arch in amd64 arm64; do
+            label=x64; [ "$arch" = arm64 ] && label=arm64
+            out="dist/TimeSync-$V-windows-$label"
+            mkdir -p "$out"
+            GOOS=windows GOARCH=$arch go build -trimpath -ldflags "$LDFLAGS" -o "$out/ntp-sync.exe" ./cmd/ntp-sync
+            (cd gui && wails build -platform "windows/$arch" -skipbindings -trimpath -ldflags "$LDFLAGS" -o "TimeSync-$arch.exe")
+            cp "gui/build/bin/TimeSync-$arch.exe" "$out/TimeSync.exe"
+            cp LICENSE README.md THIRD_PARTY_NOTICES.md "$out/"
+          done
+
+      # Code signing goes here once a certificate is available (for example
+      # through the SignPath Foundation for open source projects). Until
+      # then the files are unsigned and Windows SmartScreen will warn.
+
+      - name: installers and zips
+        shell: pwsh
+        run: |
+          $V = "${{ steps.v.outputs.version }}"
+          $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = Get-ChildItem "C:\Program Files*\Inno Setup*\ISCC.exe" | Select-Object -First 1 -ExpandProperty FullName }
+          if (-not $iscc) { Write-Host "::error::Inno Setup compiler not found"; exit 1 }
+          foreach ($label in @("x64", "arm64")) {
+            $src = "dist/TimeSync-$V-windows-$label"
+            & $iscc /Q "/DAppVersion=$V" "/DArch=$label" "/DSourceDir=$((Resolve-Path $src).Path)" "/O$((Resolve-Path dist).Path)" packaging/inno/TimeSync.iss
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            Compress-Archive -Path $src -DestinationPath "dist/TimeSync-$V-windows-$label.zip"
+          }
+          Get-ChildItem dist -File | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          } | Set-Content dist/SHA256SUMS.txt -Encoding ascii
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: TimeSync ${{ steps.v.outputs.version }}
+          body_path: CHANGELOG.md
+          files: |
+            dist/*.zip
+            dist/*.exe
+            dist/SHA256SUMS.txt

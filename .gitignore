@@ -1,5 +1,10 @@
 # Build output
 *.exe
+/dist/
+gui/build/bin/
+
+# Generated Windows resources (made by scripts/build.sh and the release workflow)
+*.syso
 
 # Runtime logs
 *.log

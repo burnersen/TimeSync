@@ -1,0 +1,47 @@
+{
+    "version": "2.0.0",
+    "description": "Keeps the Windows clock accurate using several NTP servers.",
+    "homepage": "https://github.com/burnersen/TimeSync",
+    "license": "MIT",
+    "notes": [
+        "Measure without changing anything:  ntp-sync check",
+        "Keep the clock in sync in the background (copies ntp-sync.exe to C:\\Program Files\\TimeSync,",
+        "where only administrators can change it):  sudo ntp-sync service install",
+        "Before 'scoop uninstall timesync', remove the service:  sudo ntp-sync service uninstall"
+    ],
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/burnersen/TimeSync/releases/download/v2.0.0/TimeSync-2.0.0-windows-x64.zip",
+            "hash": "{{SHA256_X64_ZIP}}",
+            "extract_dir": "TimeSync-2.0.0-windows-x64"
+        },
+        "arm64": {
+            "url": "https://github.com/burnersen/TimeSync/releases/download/v2.0.0/TimeSync-2.0.0-windows-arm64.zip",
+            "hash": "{{SHA256_ARM64_ZIP}}",
+            "extract_dir": "TimeSync-2.0.0-windows-arm64"
+        }
+    },
+    "bin": "ntp-sync.exe",
+    "shortcuts": [
+        [
+            "TimeSync.exe",
+            "TimeSync"
+        ]
+    ],
+    "checkver": "github",
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/burnersen/TimeSync/releases/download/v$version/TimeSync-$version-windows-x64.zip",
+                "extract_dir": "TimeSync-$version-windows-x64"
+            },
+            "arm64": {
+                "url": "https://github.com/burnersen/TimeSync/releases/download/v$version/TimeSync-$version-windows-arm64.zip",
+                "extract_dir": "TimeSync-$version-windows-arm64"
+            }
+        },
+        "hash": {
+            "url": "$baseurl/SHA256SUMS.txt"
+        }
+    }
+}

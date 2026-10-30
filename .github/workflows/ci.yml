@@ -16,11 +16,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
 
@@ -42,9 +42,14 @@ jobs:
         run: go test -race ./...
 
       - name: govulncheck
+        # Installed first: "GOOS=windows go run" would build the scanner
+        # itself for Windows. As a Linux program it reads GOOS and checks
+        # the Windows build.
         run: |
-          go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
-          GOOS=windows go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+          govulncheck ./...
+          GOOS=windows govulncheck ./...
+          (cd gui && GOOS=windows govulncheck .)
 
       # The window's own script, checked without a browser. An empty list
       # would pass while checking nothing, so it fails instead.
@@ -59,8 +64,8 @@ jobs:
     runs-on: windows-latest
     needs: test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - name: go test (native Windows)
@@ -88,7 +93,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force test-build | Out-Null
           Copy-Item ntp-sync.exe, gui/build/bin/TimeSync.exe, LICENSE, README.md, THIRD_PARTY_NOTICES.md test-build/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: TimeSync-test-build-x64
           path: test-build/

@@ -73,9 +73,12 @@ jobs:
         shell: pwsh
         run: |
           $V = "${{ steps.v.outputs.version }}"
+          $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = Get-ChildItem "C:\Program Files*\Inno Setup*\ISCC.exe" | Select-Object -First 1 -ExpandProperty FullName }
+          if (-not $iscc) { Write-Host "::error::Inno Setup compiler not found"; exit 1 }
           foreach ($label in @("x64", "arm64")) {
             $src = "dist/TimeSync-$V-windows-$label"
-            & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /Q "/DAppVersion=$V" "/DArch=$label" "/DSourceDir=$((Resolve-Path $src).Path)" "/O$((Resolve-Path dist).Path)" packaging/inno/TimeSync.iss
+            & $iscc /Q "/DAppVersion=$V" "/DArch=$label" "/DSourceDir=$((Resolve-Path $src).Path)" "/O$((Resolve-Path dist).Path)" packaging/inno/TimeSync.iss
             if ($LASTEXITCODE -ne 0) { exit 1 }
             Compress-Archive -Path $src -DestinationPath "dist/TimeSync-$V-windows-$label.zip"
           }

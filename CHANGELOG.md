@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 (not released yet)
+## 2.0.0 (2026-10-30)
 
 A rewrite with a window, a safer core and a proper background service.
 Every command line of 1.x still works, and a 1.x service is replaced

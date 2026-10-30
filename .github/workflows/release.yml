@@ -2,6 +2,9 @@
 #
 #   git tag v2.0.0 && git push origin v2.0.0
 #
+# or by hand: Actions > Release > "Run workflow", enter the version. Then
+# GitHub creates the tag itself when the draft is published.
+#
 # The result is a DRAFT release: nothing becomes public until it is
 # reviewed and published by hand on GitHub.
 name: Release
@@ -9,6 +12,11 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without "v", e.g. 2.0.0'
+        required: true
 
 permissions:
   contents: write
@@ -29,7 +37,11 @@ jobs:
         id: v
         shell: bash
         run: |
-          v="${GITHUB_REF_NAME#v}"
+          v="${{ inputs.version }}"
+          [ -n "$v" ] || v="${GITHUB_REF_NAME#v}"
+          if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::not a version: $v"; exit 1
+          fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "winver=$(echo "$v" | sed -E 's/^([0-9]+)\.([0-9]+)\.([0-9]+).*/\1.\2.\3.0/')" >> "$GITHUB_OUTPUT"
 
@@ -89,6 +101,8 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           draft: true
+          tag_name: v${{ steps.v.outputs.version }}
+          target_commitish: ${{ github.sha }}
           name: TimeSync ${{ steps.v.outputs.version }}
           body_path: CHANGELOG.md
           files: |

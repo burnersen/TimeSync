@@ -13,6 +13,15 @@ battery, a company network that blocks the time port.
 
 🌐 Website: [tech.burnersen.de/en/tools/timesync-en](https://tech.burnersen.de/en/tools/timesync-en/) · 🇩🇪 Auf Deutsch: [tech.burnersen.de/tools/timesync](https://tech.burnersen.de/tools/timesync/)
 
+<p>
+  <img src="docs/screenshot-overview.png" width="32%" alt="Overview: PC time next to the actual time, the offset and the background service status">
+  <img src="docs/screenshot-dualboot.png" width="32%" alt="A note explaining a one hour difference caused by dual boot with Linux">
+  <img src="docs/screenshot-settings.png" width="32%" alt="Settings: time servers, interval and when to synchronize">
+</p>
+
+The window speaks German and English and follows the Windows light or dark
+theme. What changed in version 2.0: [CHANGELOG.md](CHANGELOG.md).
+
 ## What's in the box
 
 | File | What it is |
@@ -199,9 +208,12 @@ for c in gui/frontend/*_check.js; do node "$c"; done
 scripts/build.sh 2.0.0
 ```
 
-Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml)
-when a `v*` tag is pushed; the result is a draft release with installers,
-zip files and `SHA256SUMS.txt`.
+Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml),
+either when a `v*` tag is pushed or by hand (Actions → Release → "Run
+workflow", enter the version). The result is a draft release with
+installers, zip files and `SHA256SUMS.txt`; it becomes public only when it
+is published on GitHub. Every push also leaves an unsigned test build of
+the x64 programs on its CI run page.
 
 Layout: `cmd/ntp-sync` (command line and service), `gui` (the window),
 `internal/source` (asking servers), `internal/engine` (deciding),

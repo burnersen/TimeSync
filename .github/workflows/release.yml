@@ -36,8 +36,11 @@ jobs:
       - name: version from tag
         id: v
         shell: bash
+        # Passed through the environment, never pasted into the script.
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          v="${{ inputs.version }}"
+          v="$INPUT_VERSION"
           [ -n "$v" ] || v="${GITHUB_REF_NAME#v}"
           if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
             echo "::error::not a version: $v"; exit 1

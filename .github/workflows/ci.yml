@@ -77,6 +77,19 @@ jobs:
         run: |
           ./ntp-sync.exe version
           ./ntp-sync.exe help
-          ./ntp-sync.exe check -nopause
+          ./ntp-sync.exe check
           if ($LASTEXITCODE -gt 3) { exit 1 }
           exit 0
+
+      # A test build to try out, downloadable from the run's summary page
+      # for two weeks. Not a release: unsigned and without version number.
+      - name: collect test build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force test-build | Out-Null
+          Copy-Item ntp-sync.exe, gui/build/bin/TimeSync.exe, LICENSE, README.md, THIRD_PARTY_NOTICES.md test-build/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TimeSync-test-build-x64
+          path: test-build/
+          retention-days: 14

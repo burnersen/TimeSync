@@ -55,13 +55,23 @@ func main() {
 		return
 	}
 
-	// Started by double-click: the window would vanish the moment we are
-	// done, taking every message with it.
-	pause := winsys.LaunchedFromExplorer() && !cmd.NoPause && !cmd.JSON
+	// Started by double-click (no arguments, a console window of its own):
+	// the window would vanish the moment we are done, taking every message
+	// with it. The wait ends by itself, so a scheduled task that runs the
+	// program the same way never hangs.
+	pause := cmd.Banner && winsys.LaunchedFromExplorer()
 	code := run(cmd)
 	if pause {
-		fmt.Print("\nPress Enter to close this window...")
-		bufio.NewReader(os.Stdin).ReadString('\n')
+		fmt.Print("\nPress Enter to close this window (closes by itself in one minute)...")
+		done := make(chan struct{})
+		go func() {
+			bufio.NewReader(os.Stdin).ReadString('\n')
+			close(done)
+		}()
+		select {
+		case <-done:
+		case <-time.After(time.Minute):
+		}
 	}
 	os.Exit(code)
 }

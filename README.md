@@ -1,98 +1,209 @@
 # TimeSync
 
-A tiny NTP time synchronizer for Windows (program file: `ntp-sync.exe`).
-Keeps your Windows clock accurate when the built-in time sync lets you down. One small executable, no
-installer, no dependencies — run it once, keep it running in a console
-window, or install it as a native Windows service with a single command.
+Keeps your Windows clock accurate, and tells you in plain words what is wrong
+when it isn't.
+
+TimeSync asks several time servers at once, takes the median, ignores
+outliers and only sets the clock when the servers agree. A small background
+service keeps it that way: after Windows starts, every hour, after waking
+from sleep and after a network change. The window shows your PC's time next
+to the actual time and explains the usual suspects: dual boot with Linux, a
+wrong time zone, automatic daylight saving time switched off, a weak CMOS
+battery, a company network that blocks the time port.
 
 🌐 Website: [tech.burnersen.de/en/tools/timesync-en](https://tech.burnersen.de/en/tools/timesync-en/) · 🇩🇪 Auf Deutsch: [tech.burnersen.de/tools/timesync](https://tech.burnersen.de/tools/timesync/)
 
-## Features
+## What's in the box
 
-- **Three modes:** one-shot sync, foreground loop, or Windows service
-- **Accurate:** implements the standard NTP four-timestamp exchange
-  (RFC 5905), so network latency is measured and compensated
-- **Safe:** every server response is validated (packet size, mode,
-  stratum, leap indicator, echoed originate timestamp, plausible date
-  range) before the clock is touched — a broken or spoofed reply can
-  never set your clock to a nonsense time
-- **Boot-friendly:** right after Windows starts, DNS is often not ready
-  yet; the first synchronization is retried automatically instead of
-  waiting a full interval
-- **Transparent:** the service logs every sync with the measured clock
-  offset to `ntp_sync.log` next to the executable (rotated at 1 MB)
+| File | What it is |
+| ---- | ---------- |
+| `TimeSync.exe` | The window. Runs as a normal user; asks for administrator rights (UAC) only when needed. |
+| `ntp-sync.exe` | Command line tool and Windows service. Every command line of version 1.x still works. |
 
-## Requirements
+Requirements: Windows 10 or 11, x64 or ARM64. The window uses the Microsoft
+Edge WebView2 runtime, which is part of current Windows.
 
-- Windows 10/11 (64-bit)
-- Administrator privileges (changing the system time requires them)
+## Install
 
-## Installation
+* **Installer (recommended):** download `TimeSync-<version>-setup-x64.exe`
+  (or `-arm64`) from the [latest release](https://github.com/burnersen/TimeSync/releases/latest)
+  and run it. Leave "keep the clock in sync in the background" ticked.
+* **Portable:** download the `.zip`, unpack it anywhere and start
+  `TimeSync.exe`. Setting up the background service copies `ntp-sync.exe`
+  to `C:\Program Files\TimeSync`, where only administrators can change it.
+  To keep the window's preferences next to the program, create an empty
+  file `portable.txt` beside `TimeSync.exe`.
+* **winget / Scoop:** coming soon (manifests are in [`packaging/`](packaging/)).
 
-**Option 1 — Download:** get `ntp-sync.exe` from the
-[latest release](https://github.com/burnersen/TimeSync/releases/latest) and put it in a permanent folder of your
-choice, e.g. `C:\Tools\ntp-sync\`.
+> **Windows SmartScreen** may warn because the files are not yet digitally
+> signed. Choose "More info" → "Run anyway". The source code is all here,
+> and every release is built by GitHub Actions from this repository.
 
-**Option 2 — Build from source** (requires [Go](https://go.dev)):
+## How it decides
+
+Every synchronization round:
+
+1. All configured servers are asked at the same time (default: the four
+   numbered [NTP Pool](https://www.ntppool.org) zones).
+2. Each answer is checked: protocol fields, kiss-of-death codes, leap
+   indicator, stratum, root distance, freshness, a plausible date, an
+   answer that cannot have been sent before it was received, and a random
+   request token that a forged answer cannot know.
+3. The median of the valid answers is the reference; answers too far from
+   it are ignored as outliers. More than half of the answers must agree,
+   otherwise nothing is changed.
+4. Corrections larger than 15 minutes need at least three agreeing servers
+   (a dead CMOS battery that reset the clock to 2001 is fixed, a single
+   broken server claiming it is 2036 is not).
+5. Differences under 2 ms are left alone. Up to 500 ms the service runs the
+   clock 0.05 % faster or slower until the difference is gone; nobody
+   notices. Larger differences are corrected directly.
+6. If no NTP server answers at all (UDP port 123 blocked), the time is taken
+   from the `Date` header of a few well-known web servers instead, accurate
+   to about one second. This can be switched off.
+
+Servers can be prefixed with `nts://` to use [Network Time
+Security](https://www.rfc-editor.org/rfc/rfc8915) (encrypted, authenticated
+NTP), for example `nts://ptbtime1.ptb.de` or `nts://time.cloudflare.com`.
+
+## The background service
+
+`ntp-sync service install` (or the installer, or the button in the window):
+
+* copies `ntp-sync.exe` to `C:\Program Files\TimeSync`,
+* creates the service **TimeSync**: account *Local Service* with its own
+  service SID, delayed automatic start, restart after a failure,
+* stores settings in `C:\ProgramData\TimeSync\config.json` (only
+  administrators may change them, everyone may read them) and its log and
+  history in `C:\ProgramData\TimeSync\state\`,
+* replaces a version 1.x service named `ntp-sync`, if present.
+
+### Windows Time service (w32time)
+
+By default TimeSync takes over: the Windows Time service keeps running
+(other parts of Windows use it), but its time source is set to `NoSync`, so
+only one program sets the clock. The original setting is saved to
+`C:\ProgramData\TimeSync\w32time-backup.json` and written back when the
+service is removed. Alternatively, set `w32timeMode` to `leave`.
+
+### Company computers
+
+On a computer that belongs to an Active Directory domain, the domain
+controller is the time authority and signing in depends on it. TimeSync
+therefore only measures and reports there, and leaves Windows Time alone.
+An administrator can allow it anyway (`allowOnDomain`, or the checkbox in
+the settings).
+
+## Dual boot with Linux
+
+If the clock is off by exactly your time zone offset (one or two hours in
+Germany) after starting Windows, Linux and Windows disagree about the
+hardware clock: Linux keeps it in UTC, Windows in local time. TimeSync fixes
+the clock after every start, but the clean solution is to make both agree.
+Either tell Linux to use local time:
+
+```
+timedatectl set-local-rtc 1
+```
+
+or tell Windows to use UTC (as administrator, then restart):
+
+```
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" /v RealTimeIsUniversal /t REG_DWORD /d 1 /f
+```
+
+To undo the Windows change:
+
+```
+reg delete "HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" /v RealTimeIsUniversal /f
+```
+
+## Command line
+
+```
+ntp-sync                      synchronize once (like "sync", with an overview)
+ntp-sync check                only measure how far off the clock is (no admin needed)
+ntp-sync sync                 synchronize now (via the service if it runs, else admin needed)
+ntp-sync status               show the service status
+ntp-sync history [-n 20]      last synchronizations and the clock's drift
+ntp-sync run [-interval 60]   keep synchronizing in this window (admin)
+ntp-sync diagnose [-out FILE] diagnostics report for support requests
+
+ntp-sync service install [-interval 60]   install the background service (admin)
+ntp-sync service uninstall [-purge]       remove it and restore Windows Time (admin)
+ntp-sync service start|stop|restart
+
+ntp-sync config show [-json]
+ntp-sync config set servers=nts://ptbtime1.ptb.de,nts://ptbtime2.ptb.de,0.pool.ntp.org interval=30
+ntp-sync config reset
+ntp-sync config import FILE
+ntp-sync w32time status|restore
+```
+
+Options: `-server a,b,c` (use other servers once), `-json` (machine readable),
+`-force` (set the clock on a domain computer), `-local` (don't go through the
+service).
+
+Exit codes: `0` ok, `1` error, `2` wrong usage, `3` no trustworthy time,
+`4` administrator rights needed.
+
+Version 1.x command lines (`-install 60`, `-uninstall`, `-interval 30`,
+`-version`) keep working, and a service installed by 1.x keeps running after
+the program file is replaced.
+
+### Settings
+
+`C:\ProgramData\TimeSync\config.json`:
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `servers` | 0–3.pool.ntp.org | NTP servers; `host`, `host:port`, `nts://host` |
+| `intervalMinutes` | 60 | regular interval (5 to 1440) |
+| `syncOnStart`, `syncOnResume`, `syncOnNetworkChange` | true | extra synchronizations |
+| `minCorrectionMs` | 2 | smaller differences are left alone |
+| `slewMaxMs` | 500 | gentle correction up to this size; 0 always steps |
+| `bigJumpMinutes` | 15 | larger corrections need three agreeing servers |
+| `httpsFallback`, `httpsFallbackUrls` | true, four sites | web time when NTP is blocked |
+| `w32timeMode` | `takeover` | or `leave` |
+| `allowOnDomain` | false | set the clock on domain computers too |
+| `eventLog` | true | write to the Windows Event Viewer (source "TimeSync") |
+
+## Privacy
+
+TimeSync contacts only the time servers in your settings and, if NTP is
+blocked, the web servers in `httpsFallbackUrls` (a `HEAD` request, nothing
+is sent but the request itself). There is no telemetry, no update check and
+no account. The diagnostics file masks your user name.
+
+## Uninstall
+
+Use "Apps" in the Windows settings (installer), or run
+`ntp-sync service uninstall` as administrator (portable) and delete the
+folder. Either way the Windows Time service is set back to how it was.
+`-purge` also deletes settings, log and history.
+
+## Building
+
+Needs [Go](https://go.dev) and, for the window, the
+[Wails](https://wails.io) CLI v2.
 
 ```
 git clone https://github.com/burnersen/TimeSync.git
 cd TimeSync
-go build -ldflags "-s -w" -o ntp-sync.exe .
+go test ./...
+for c in gui/frontend/*_check.js; do node "$c"; done
+scripts/build.sh 2.0.0
 ```
 
-## Usage
+Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml)
+when a `v*` tag is pushed; the result is a draft release with installers,
+zip files and `SHA256SUMS.txt`.
 
-Open a console **as administrator**, then:
-
-| Command | Effect |
-| ------- | ------ |
-| `ntp-sync.exe` | Synchronize the clock once, right now |
-| `ntp-sync.exe -interval 30` | Keep syncing every 30 minutes in this console window |
-| `ntp-sync.exe -install 60` | Install as a Windows service that syncs every 60 minutes |
-| `ntp-sync.exe -uninstall` | Remove the Windows service |
-| `ntp-sync.exe -version` | Print the version |
-
-Running `ntp-sync.exe` without arguments also prints this overview before
-synchronizing.
-
-### Running as a Windows service
-
-`ntp-sync.exe -install 30` registers a service named **ntp-sync** with
-automatic start, so it synchronizes the clock in the background from the
-next boot on. To start it immediately without rebooting:
-
-```
-sc start ntp-sync
-```
-
-The service writes its log to `ntp_sync.log` in the same folder as the
-executable. Keep the executable in a permanent location — the service
-points to wherever it was installed from.
-
-A typical log looks like this:
-
-```
-2026/07/06 08:27:30 [INFO] Service started. Sync interval: 30m0s
-2026/07/06 08:27:31 [NTP] Initial synchronization successful, clock offset was 19ms
-2026/07/06 08:57:31 [NTP] Synchronization successful, clock offset was -4ms
-```
-
-### Note on the built-in Windows Time service
-
-Windows ships its own time service (W32Time). Both can coexist, but if
-you install ntp-sync you may want to disable W32Time so that only one
-component adjusts the clock: open `services.msc`, set **Windows Time** to
-*Disabled* (or run `sc config w32time start= disabled` as administrator).
-
-## How it works
-
-ntp-sync sends a standard NTP client request to `pool.ntp.org` (UDP port
-123), validates the reply, and computes the clock offset from the four
-NTP timestamps. It then adjusts the Windows system clock through the
-native `SetSystemTime` API. That's all — no background magic, a single
-source file you can read in a few minutes.
+Layout: `cmd/ntp-sync` (command line and service), `gui` (the window),
+`internal/source` (asking servers), `internal/engine` (deciding),
+`internal/syncer` (one round), `internal/service`, `internal/winsys`
+(Windows calls), `internal/ipc` (named pipe between window and service).
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

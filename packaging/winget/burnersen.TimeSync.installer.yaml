@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.9.0.schema.json
+PackageIdentifier: burnersen.TimeSync
+PackageVersion: {{VERSION}}
+InstallerType: inno
+Scope: machine
+ElevationRequirement: elevatesSelf
+UpgradeBehavior: install
+MinimumOSVersion: 10.0.17763.0
+ReleaseDate: {{DATE}}
+AppsAndFeaturesEntries:
+  - DisplayName: TimeSync
+    Publisher: burnersen
+    ProductCode: '{8C3B1F0E-5A7D-4E21-9C4B-2F6D3A1E7B90}_is1'
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/burnersen/TimeSync/releases/download/v{{VERSION}}/TimeSync-{{VERSION}}-setup-x64.exe
+    InstallerSha256: {{SHA256_X64}}
+  - Architecture: arm64
+    InstallerUrl: https://github.com/burnersen/TimeSync/releases/download/v{{VERSION}}/TimeSync-{{VERSION}}-setup-arm64.exe
+    InstallerSha256: {{SHA256_ARM64}}
+ManifestType: installer
+ManifestVersion: 1.9.0

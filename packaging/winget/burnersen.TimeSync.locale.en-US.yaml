@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.9.0.schema.json
+PackageIdentifier: burnersen.TimeSync
+PackageVersion: {{VERSION}}
+PackageLocale: en-US
+Publisher: burnersen
+PublisherUrl: https://github.com/burnersen
+PublisherSupportUrl: https://github.com/burnersen/TimeSync/issues
+PackageName: TimeSync
+PackageUrl: https://github.com/burnersen/TimeSync
+License: MIT
+LicenseUrl: https://github.com/burnersen/TimeSync/blob/main/LICENSE
+ShortDescription: Keeps the Windows clock accurate using several NTP servers.
+Description: |-
+  TimeSync keeps the Windows clock accurate. It asks several time servers, takes the median, ignores
+  outliers and only sets the clock when the servers agree. A small background service keeps the clock
+  in sync after start, after waking from sleep and after network changes. The window explains what is
+  going on in plain words (dual boot with Linux, wrong time zone, weak CMOS battery, blocked NTP port).
+Moniker: timesync
+Tags:
+  - clock
+  - ntp
+  - nts
+  - time
+  - time-sync
+  - w32time
+ReleaseNotesUrl: https://github.com/burnersen/TimeSync/releases/tag/v{{VERSION}}
+ManifestType: defaultLocale
+ManifestVersion: 1.9.0

@@ -284,6 +284,7 @@ details > summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
             <textarea id="set-servers" spellcheck="false"></textarea>
             <div class="help" data-i18n="setServersHelp"></div>
             <div class="presets">
+              <button class="btn small" onclick="applyPreset('standard')" data-i18n="presetStandard"></button>
               <button class="btn small" onclick="applyPreset('pool')" data-i18n="presetPool"></button>
               <button class="btn small" onclick="applyPreset('ptb')" data-i18n="presetPtb"></button>
               <button class="btn small" onclick="applyPreset('ptbNts')" data-i18n="presetPtbNts"></button>
@@ -439,7 +440,7 @@ var I18N = {
     actFailed: "Fehler", actMonitor: "nur gemessen", actCheck: "geprüft",
     setServersTitle: "Zeitserver",
     setServersHelp: "Ein Server pro Zeile. Mindestens drei verschiedene Server sind am sichersten. Mit nts:// davor wird verschlüsselt abgefragt (NTS).",
-    presetPool: "NTP-Pool (Standard)", presetPtb: "PTB Braunschweig", presetPtbNts: "PTB mit NTS", presetCloudflare: "Cloudflare mit NTS",
+    presetStandard: "Empfohlen (Standard)", presetPool: "NTP-Pool", presetPtb: "PTB Braunschweig", presetPtbNts: "PTB mit NTS", presetCloudflare: "Cloudflare mit NTS",
     setWhenTitle: "Wann synchronisieren",
     setInterval: "Regelmäßig alle",
     minutes: "{n} Minuten", hours: "{n} Stunden", hour: "1 Stunde", day: "1 Tag",
@@ -571,7 +572,7 @@ var I18N = {
     actFailed: "error", actMonitor: "measured only", actCheck: "checked",
     setServersTitle: "Time servers",
     setServersHelp: "One server per line. At least three different servers are safest. Prefix nts:// for encrypted queries (NTS).",
-    presetPool: "NTP Pool (default)", presetPtb: "PTB Germany", presetPtbNts: "PTB with NTS", presetCloudflare: "Cloudflare with NTS",
+    presetStandard: "Recommended (default)", presetPool: "NTP Pool", presetPtb: "PTB Germany", presetPtbNts: "PTB with NTS", presetCloudflare: "Cloudflare with NTS",
     setWhenTitle: "When to synchronize",
     setInterval: "Regularly every",
     minutes: "{n} minutes", hours: "{n} hours", hour: "1 hour", day: "1 day",
@@ -638,6 +639,7 @@ var I18N = {
 };
 
 var PRESETS = {
+  standard: ["time.cloudflare.com", "ptbtime1.ptb.de", "ptbtime2.ptb.de", "time.windows.com"],
   pool: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org", "3.pool.ntp.org"],
   ptb: ["ptbtime1.ptb.de", "ptbtime2.ptb.de", "ptbtime3.ptb.de", "ptbtime4.ptb.de"],
   ptbNts: ["nts://ptbtime1.ptb.de", "nts://ptbtime2.ptb.de", "nts://ptbtime3.ptb.de", "nts://ptbtime4.ptb.de"],

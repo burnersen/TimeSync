@@ -137,7 +137,7 @@ func TestHTTPSFallbackOnlyWhenNTPIsSilent(t *testing.T) {
 
 func TestSkippedServers(t *testing.T) {
 	req := request()
-	req.Skip = map[string]bool{"0.pool.ntp.org": true}
+	req.Skip = map[string]bool{config.DefaultServers[0]: true}
 	r := Run(context.Background(), req, &fakeClock{}, answers(0, 4))
 	if len(r.Samples) != 3 {
 		t.Fatalf("skipped server was asked: %d samples", len(r.Samples))

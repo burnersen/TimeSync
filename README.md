@@ -43,8 +43,12 @@ Edge WebView2 runtime, which is part of current Windows.
 
 Every synchronization round:
 
-1. All configured servers are asked at the same time (default: the four
-   numbered [NTP Pool](https://www.ntppool.org) zones).
+1. All configured servers are asked at the same time. The default comes
+   from three operators that offer public time service: Cloudflare
+   (`time.cloudflare.com`), the German national metrology institute PTB
+   (`ptbtime1.ptb.de`, `ptbtime2.ptb.de`) and Microsoft (`time.windows.com`).
+   The [NTP Pool](https://www.ntppool.org) is one click away in the
+   settings (`0.pool.ntp.org` to `3.pool.ntp.org`).
 2. Each answer is checked: protocol fields, kiss-of-death codes, leap
    indicator, stratum, root distance, freshness, a plausible date, an
    answer that cannot have been sent before it was received, and a random
@@ -157,7 +161,7 @@ the program file is replaced.
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `servers` | 0–3.pool.ntp.org | NTP servers; `host`, `host:port`, `nts://host` |
+| `servers` | Cloudflare, PTB (2), Microsoft | NTP servers; `host`, `host:port`, `nts://host` |
 | `intervalMinutes` | 60 | regular interval (5 to 1440) |
 | `syncOnStart`, `syncOnResume`, `syncOnNetworkChange` | true | extra synchronizations |
 | `minCorrectionMs` | 2 | smaller differences are left alone |

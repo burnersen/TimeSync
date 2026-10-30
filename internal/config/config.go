@@ -34,13 +34,20 @@ const (
 	MaxBigJumpMinutes  = 24 * 60
 )
 
-// DefaultServers are the NTP Pool's numbered zones. Each name resolves to a
-// different volunteer server, so four names give four independent opinions.
+// DefaultServers come from three operators that offer their time service
+// to the public: Cloudflare, the PTB (Germany's national metrology
+// institute, which provides the legal time) and Microsoft. Three operators
+// mean that one of them going wrong is outvoted or at least noticed.
+//
+// The NTP Pool asks distributed software not to use pool.ntp.org itself as
+// a default; users may of course enter it, and the window offers it as a
+// preset. Once the pool has granted TimeSync a vendor zone, its names
+// ({0,1,2,3}.<zone>.pool.ntp.org) can become the default here.
 var DefaultServers = []string{
-	"0.pool.ntp.org",
-	"1.pool.ntp.org",
-	"2.pool.ntp.org",
-	"3.pool.ntp.org",
+	"time.cloudflare.com",
+	"ptbtime1.ptb.de",
+	"ptbtime2.ptb.de",
+	"time.windows.com",
 }
 
 // DefaultHTTPSFallbackURLs are asked for their "Date" header only when no NTP

@@ -12,7 +12,8 @@ automatically by `ntp-sync service install`.
   next to the actual time, the offset in plain words, synchronize, history
   with drift statistics, settings, diagnostics file.
 - **Several servers at once**: median, outliers ignored, majority required.
-  Default: the four NTP Pool zones.
+  Default: Cloudflare, PTB (two servers) and Microsoft, three independent
+  operators. The NTP Pool is available as a preset.
 - **Gentle correction**: small offsets are evened out by running the clock
   slightly faster or slower instead of jumping.
 - **Synchronization after waking from sleep and after network changes**, in

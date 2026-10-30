@@ -13,6 +13,11 @@ console.log("\n=== presets ===");
 for (const [name, list] of Object.entries(gui.PRESETS)) {
   check(`${name} has 4 servers`, list.length, 4);
 }
+// The "standard" button must give exactly the defaults of the service
+// (internal/config/config.go), or "back to standard" would mean two things.
+const goConfig = require("fs").readFileSync(require("path").join(__dirname, "..", "..", "internal", "config", "config.go"), "utf8");
+const block = goConfig.slice(goConfig.indexOf("var DefaultServers = []string{"), goConfig.indexOf("}", goConfig.indexOf("var DefaultServers")));
+check("standard preset = Go defaults", gui.PRESETS.standard, [...block.matchAll(/"([^"]+)"/g)].map((m) => m[1]));
 
 console.log("\n=== form round trip ===");
 gui.fillSelects();

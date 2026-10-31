@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration "programs" for TimeSync: the first of the
+  two signing requests of a release (see ../.github/workflows/release.yml).
+  Copy it into the SignPath project as an artifact configuration with the
+  slug "programs".
+
+  The workflow uploads the four programs as one ZIP, x64/ and arm64/ side
+  by side. Only these four files are signed, and only if their file
+  properties name TimeSync and the version of the release.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <!-- 1.2.3, without any suffix: what the file properties carry. -->
+    <parameter name="version" required="true" />
+  </parameters>
+  <zip-file>
+    <pe-file path="x64/TimeSync.exe" product-name="TimeSync" product-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+    <pe-file path="x64/ntp-sync.exe" product-name="TimeSync" product-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+    <pe-file path="arm64/TimeSync.exe" product-name="TimeSync" product-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+    <pe-file path="arm64/ntp-sync.exe" product-name="TimeSync" product-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration "installers" for TimeSync: the second
+  signing request of a release, sent after the installers were built from
+  the already signed programs (see ../.github/workflows/release.yml).
+  Copy it into the SignPath project as an artifact configuration with the
+  slug "installers".
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <!-- The version of the release as in the file names, e.g. 2.1.0 or 2.1.0-rc1. -->
+    <parameter name="version" required="true" />
+    <!-- 1.2.3, without any suffix: what the file properties carry. -->
+    <parameter name="numeric" required="true" />
+  </parameters>
+  <zip-file>
+    <pe-file path="TimeSync-${version}-setup-x64.exe" product-name="TimeSync" product-version="${numeric}">
+      <authenticode-sign />
+    </pe-file>
+    <pe-file path="TimeSync-${version}-setup-arm64.exe" product-name="TimeSync" product-version="${numeric}">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

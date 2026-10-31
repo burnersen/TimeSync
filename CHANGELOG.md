@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.0.1 (2026-10-31)
+
+Built on GitHub, ready for code signing. TimeSync itself works exactly as
+in 2.0.0.
+
+- **Built by GitHub Actions** from the source in this repository, like
+  every release, never on a private PC. A dry run checks the whole build
+  without publishing anything.
+- **File properties:** `ntp-sync.exe` and the installers now carry the
+  same product name and version (2.0.1) as `TimeSync.exe` (right-click >
+  Properties > Details).
+- **Code signing prepared:** free code signing through the SignPath
+  Foundation is applied for. Until it is active the files stay unsigned;
+  see the [code signing policy](CODE_SIGNING.md), which also holds the
+  privacy policy.
+
 ## 2.0.0 (2026-10-30)
 
 A rewrite with a window, a safer core and a proper background service.

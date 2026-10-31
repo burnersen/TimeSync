@@ -10,7 +10,7 @@
   "info": {
     "companyName": "burnersen",
     "productName": "TimeSync",
-    "productVersion": "2.0.0",
+    "productVersion": "2.0.1",
     "copyright": "Copyright 2026 burnersen, MIT license",
     "comments": "Keeps the Windows clock accurate"
   }

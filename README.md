@@ -213,9 +213,9 @@ scripts/build.sh 2.0.0
 
 Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml),
 either when a `v*` tag is pushed or by hand (Actions → Release → "Run
-workflow", enter the version). The result is a draft release with
-installers, zip files and `SHA256SUMS.txt`; it becomes public only when it
-is published on GitHub. Code signing is prepared in the same workflow and
+workflow", enter the version). It publishes the release with
+installers, zip files and `SHA256SUMS.txt` as soon as every step passed;
+if anything fails, nothing is published. Code signing is prepared in the same workflow and
 switched on once SignPath Foundation approves it, see
 [`.signpath/README.md`](.signpath/README.md). A dry run (tick "dry run")
 builds and checks everything without publishing. Every push also leaves an unsigned test build of

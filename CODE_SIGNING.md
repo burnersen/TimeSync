@@ -1,11 +1,14 @@
 # Code signing policy
 
-Free code signing provided by [SignPath.io](https://about.signpath.io),
-certificate by [SignPath Foundation](https://signpath.org).
-
-> **Status:** TimeSync has applied to the SignPath Foundation. Until the
-> signing is active, the Windows files of a release are not signed. Every
-> release says in its text whether its files are signed.
+> **Status:** The Windows files of a release are not code signed yet. Free code signing
+> through the [SignPath Foundation](https://signpath.org) is planned as soon as
+> TimeSync is known well enough to qualify. Everything for it is prepared, and
+> this policy already describes how it will work. Every release says in its
+> text whether its files are signed.
+>
+> Once signing is active: free code signing provided by
+> [SignPath.io](https://about.signpath.io), certificate by
+> [SignPath Foundation](https://signpath.org).
 
 ## What is signed
 

@@ -53,8 +53,8 @@ Edge WebView2 runtime, which is part of current Windows.
 > **Windows SmartScreen** may warn because the files are not yet digitally
 > signed. Choose "More info" → "Run anyway". The source code is all here,
 > and every release is built by GitHub Actions from this repository.
-> Free code signing through the SignPath Foundation is applied for; see the
-> [code signing policy](CODE_SIGNING.md).
+> Free code signing through the SignPath Foundation is planned as soon as
+> TimeSync is known well enough to qualify; see the [code signing policy](CODE_SIGNING.md).
 
 ## How it decides
 

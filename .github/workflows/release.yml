@@ -7,6 +7,18 @@
 #
 # The result is a DRAFT release: nothing becomes public until it is
 # reviewed and published by hand on GitHub.
+#
+# Dry run: tick "dry run" when starting it by hand. Everything is built and
+# checked, the files stay on the run page as a workflow artifact, nothing is
+# signed or published. Pull requests that change this workflow, the
+# installer or .signpath/ get a dry run by themselves.
+#
+# Code signing (SignPath Foundation) is prepared but off until the
+# repository has the variable SIGNPATH_ORGANIZATION_ID and the secret
+# SIGNPATH_API_TOKEN; see .signpath/README.md. Without them the release is
+# built unsigned, exactly as before. With them the programs are signed
+# first, the installers are built from the signed programs and are then
+# signed themselves: two signing requests to approve per release.
 name: Release
 
 on:
@@ -17,13 +29,28 @@ on:
       version:
         description: 'Version without "v", e.g. 2.0.0'
         required: true
+      dry_run:
+        description: 'Dry run: build and check only, sign and publish nothing'
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - '.signpath/**'
+      - 'packaging/inno/**'
 
 permissions:
   contents: write
+  actions: read
+
+env:
+  DRY_RUN: ${{ github.event_name == 'pull_request' || inputs.dry_run == true }}
 
 jobs:
   release:
     runs-on: windows-latest
+    # Up to one hour of waiting for each of the two signing approvals.
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
@@ -41,12 +68,23 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
         run: |
           v="$INPUT_VERSION"
+          # A pull request has no version of its own: it builds the one in
+          # wails.json.
+          if [ -z "$v" ] && [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            v=$(sed -nE 's/.*"productVersion": "([^"]*)".*/\1/p' gui/wails.json)
+          fi
           [ -n "$v" ] || v="${GITHUB_REF_NAME#v}"
           if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
             echo "::error::not a version: $v"; exit 1
           fi
+          # numeric: what the file properties of every exe and installer
+          # carry, and what SignPath checks them against.
+          numeric=$(echo "$v" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
           echo "version=$v" >> "$GITHUB_OUTPUT"
-          echo "winver=$(echo "$v" | sed -E 's/^([0-9]+)\.([0-9]+)\.([0-9]+).*/\1.\2.\3.0/')" >> "$GITHUB_OUTPUT"
+          echo "winver=$numeric.0" >> "$GITHUB_OUTPUT"
+          echo "numeric=$numeric" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+          echo "NUMERIC_VERSION=$numeric" >> "$GITHUB_ENV"
 
       - name: tests
         shell: bash
@@ -64,11 +102,13 @@ jobs:
         run: |
           set -euo pipefail
           V="${{ steps.v.outputs.version }}"
-          W="${{ steps.v.outputs.winver }}"
+          N="${{ steps.v.outputs.numeric }}"
           LDFLAGS="-s -w -X github.com/burnersen/TimeSync/internal/version.Version=$V"
+          # Both exes carry the same product version text (1.2.3): SignPath
+          # compares it, and go-winres writes the text exactly as given.
           (cd cmd/ntp-sync && go run github.com/tc-hib/go-winres@v0.3.3 make --in winres/winres.json --out rsrc \
-            --arch amd64,arm64 --product-version "$W" --file-version "$W")
-          sed -i -E "s/\"productVersion\": \"[^\"]*\"/\"productVersion\": \"${W%.0}\"/" gui/wails.json
+            --arch amd64,arm64 --product-version "$N" --file-version "$N")
+          sed -i -E "s/\"productVersion\": \"[^\"]*\"/\"productVersion\": \"$N\"/" gui/wails.json
           mkdir -p dist
           for arch in amd64 arm64; do
             label=x64; [ "$arch" = arm64 ] && label=arm64
@@ -80,34 +120,186 @@ jobs:
             cp LICENSE README.md THIRD_PARTY_NOTICES.md "$out/"
           done
 
-      # Code signing goes here once a certificate is available (for example
-      # through the SignPath Foundation for open source projects). Until
-      # then the files are unsigned and Windows SmartScreen will warn.
+      - name: check the file properties of the programs
+        run: |
+          $files = foreach ($label in 'x64', 'arm64') {
+            "dist/TimeSync-$env:VERSION-windows-$label/TimeSync.exe"
+            "dist/TimeSync-$env:VERSION-windows-$label/ntp-sync.exe"
+          }
+          ./.signpath/check-files.ps1 -ProductName TimeSync -ProductVersion $env:NUMERIC_VERSION -Path $files
 
-      - name: installers and zips
+      # --- code signing: on or off? ----------------------------------------
+      - name: 'code signing: on or off?'
+        id: signing
+        env:
+          ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          HAS_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
+        run: |
+          $hasOrganization = -not [string]::IsNullOrWhiteSpace($env:ORGANIZATION_ID)
+          $hasToken = $env:HAS_TOKEN -eq 'true'
+          if ($env:DRY_RUN -eq 'true') {
+            $on = $false
+            Write-Host 'Dry run: nothing is signed.'
+          } elseif ($hasOrganization -ne $hasToken) {
+            Write-Host '::error::Code signing is half set up: SIGNPATH_ORGANIZATION_ID and SIGNPATH_API_TOKEN must both be set, or neither (see .signpath/README.md).'
+            exit 1
+          } else {
+            $on = $hasOrganization -and $hasToken
+            Write-Host ($(if ($on) { 'Code signing is on.' } else { 'Code signing is off: this release is unsigned.' }))
+          }
+          "enabled=$($on.ToString().ToLower())" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      # --- code signing, round 1: the programs -----------------------------
+      - name: 'code signing: collect the programs'
+        if: steps.signing.outputs.enabled == 'true'
+        run: |
+          foreach ($label in 'x64', 'arm64') {
+            New-Item -ItemType Directory "sign/programs/$label" -Force | Out-Null
+            Copy-Item "dist/TimeSync-$env:VERSION-windows-$label/*.exe" "sign/programs/$label/"
+          }
+
+      - name: 'code signing: upload the programs'
+        id: unsigned-programs
+        if: steps.signing.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unsigned-programs
+          path: sign/programs
+          if-no-files-found: error
+
+      - name: 'code signing: sign the programs (approve the request in SignPath)'
+        if: steps.signing.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'TimeSync' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG || 'release-signing' }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_PROGRAMS_CONFIGURATION_SLUG || 'programs' }}
+          github-artifact-id: ${{ steps.unsigned-programs.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: sign/programs-signed
+          parameters: |
+            version: "${{ steps.v.outputs.numeric }}"
+
+      - name: 'code signing: take over the signed programs'
+        if: steps.signing.outputs.enabled == 'true'
+        run: |
+          $files = foreach ($label in 'x64', 'arm64') {
+            foreach ($exe in 'TimeSync.exe', 'ntp-sync.exe') {
+              $target = "dist/TimeSync-$env:VERSION-windows-$label/$exe"
+              Copy-Item "sign/programs-signed/$label/$exe" $target -Force
+              $target
+            }
+          }
+          ./.signpath/check-files.ps1 -ProductName TimeSync -ProductVersion $env:NUMERIC_VERSION -Path $files -Signed
+
+      - name: installers
         shell: pwsh
         run: |
           $V = "${{ steps.v.outputs.version }}"
+          $N = "${{ steps.v.outputs.numeric }}"
           $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
           if (-not $iscc) { $iscc = Get-ChildItem "C:\Program Files*\Inno Setup*\ISCC.exe" | Select-Object -First 1 -ExpandProperty FullName }
           if (-not $iscc) { Write-Host "::error::Inno Setup compiler not found"; exit 1 }
           foreach ($label in @("x64", "arm64")) {
             $src = "dist/TimeSync-$V-windows-$label"
-            & $iscc /Q "/DAppVersion=$V" "/DArch=$label" "/DSourceDir=$((Resolve-Path $src).Path)" "/O$((Resolve-Path dist).Path)" packaging/inno/TimeSync.iss
+            & $iscc /Q "/DAppVersion=$V" "/DNumericVersion=$N" "/DArch=$label" "/DSourceDir=$((Resolve-Path $src).Path)" "/O$((Resolve-Path dist).Path)" packaging/inno/TimeSync.iss
             if ($LASTEXITCODE -ne 0) { exit 1 }
-            Compress-Archive -Path $src -DestinationPath "dist/TimeSync-$V-windows-$label.zip"
+          }
+          $installers = foreach ($label in 'x64', 'arm64') { "dist/TimeSync-$V-setup-$label.exe" }
+          ./.signpath/check-files.ps1 -ProductName TimeSync -ProductVersion $N -Path $installers
+
+      # --- code signing, round 2: the installers ---------------------------
+      - name: 'code signing: collect the installers'
+        if: steps.signing.outputs.enabled == 'true'
+        run: |
+          New-Item -ItemType Directory sign/installers -Force | Out-Null
+          Copy-Item dist/*-setup-*.exe sign/installers/
+
+      - name: 'code signing: upload the installers'
+        id: unsigned-installers
+        if: steps.signing.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unsigned-installers
+          path: sign/installers
+          if-no-files-found: error
+
+      - name: 'code signing: sign the installers (approve the request in SignPath)'
+        if: steps.signing.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'TimeSync' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG || 'release-signing' }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_INSTALLERS_CONFIGURATION_SLUG || 'installers' }}
+          github-artifact-id: ${{ steps.unsigned-installers.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: sign/installers-signed
+          parameters: |
+            version: "${{ steps.v.outputs.version }}"
+            numeric: "${{ steps.v.outputs.numeric }}"
+
+      - name: 'code signing: take over the signed installers'
+        if: steps.signing.outputs.enabled == 'true'
+        run: |
+          $files = foreach ($label in 'x64', 'arm64') {
+            $name = "TimeSync-$env:VERSION-setup-$label.exe"
+            Copy-Item "sign/installers-signed/$name" "dist/$name" -Force
+            "dist/$name"
+          }
+          ./.signpath/check-files.ps1 -ProductName TimeSync -ProductVersion $env:NUMERIC_VERSION -Path $files -Signed
+
+      - name: zips and checksums
+        shell: pwsh
+        run: |
+          $V = "${{ steps.v.outputs.version }}"
+          foreach ($label in @("x64", "arm64")) {
+            Compress-Archive -Path "dist/TimeSync-$V-windows-$label" -DestinationPath "dist/TimeSync-$V-windows-$label.zip"
           }
           Get-ChildItem dist -File | ForEach-Object {
             "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
           } | Set-Content dist/SHA256SUMS.txt -Encoding ascii
+          Get-Content dist/SHA256SUMS.txt
+
+      # The release page is the download page, so it links the code signing
+      # policy and says whether the files of this release are signed.
+      - name: release text
+        env:
+          SIGNED: ${{ steps.signing.outputs.enabled }}
+        run: |
+          $policy = "https://github.com/$env:GITHUB_REPOSITORY/blob/main/CODE_SIGNING.md"
+          if ($env:SIGNED -eq 'true') {
+            $footer = "The Windows files of this release are signed. Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org). [Code signing policy]($policy)"
+          } else {
+            $footer = "The Windows files of this release are not code signed, so Windows SmartScreen may warn. [Code signing policy]($policy)"
+          }
+          $text = [IO.File]::ReadAllText("CHANGELOG.md") + "`n---`n`n$footer`n"
+          [IO.File]::WriteAllText("$env:RUNNER_TEMP/release-notes.md", $text, [Text.UTF8Encoding]::new($false))
+
+      - name: 'dry run: keep the files on the run page'
+        if: env.DRY_RUN == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-dry-run
+          path: |
+            dist/*.zip
+            dist/*.exe
+            dist/SHA256SUMS.txt
+          retention-days: 7
 
       - uses: softprops/action-gh-release@v2
+        if: env.DRY_RUN != 'true'
         with:
           draft: true
           tag_name: v${{ steps.v.outputs.version }}
           target_commitish: ${{ github.sha }}
           name: TimeSync ${{ steps.v.outputs.version }}
-          body_path: CHANGELOG.md
+          body_path: ${{ runner.temp }}/release-notes.md
           files: |
             dist/*.zip
             dist/*.exe

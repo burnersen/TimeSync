@@ -47,6 +47,8 @@ Edge WebView2 runtime, which is part of current Windows.
 > **Windows SmartScreen** may warn because the files are not yet digitally
 > signed. Choose "More info" → "Run anyway". The source code is all here,
 > and every release is built by GitHub Actions from this repository.
+> Free code signing through the SignPath Foundation is applied for; see the
+> [code signing policy](CODE_SIGNING.md).
 
 ## How it decides
 
@@ -186,7 +188,8 @@ the program file is replaced.
 TimeSync contacts only the time servers in your settings and, if NTP is
 blocked, the web servers in `httpsFallbackUrls` (a `HEAD` request, nothing
 is sent but the request itself). There is no telemetry, no update check and
-no account. The diagnostics file masks your user name.
+no account. The diagnostics file masks your user name. The full privacy
+policy is part of the [code signing policy](CODE_SIGNING.md#privacy-policy).
 
 ## Uninstall
 
@@ -212,7 +215,10 @@ Releases are built by [`.github/workflows/release.yml`](.github/workflows/releas
 either when a `v*` tag is pushed or by hand (Actions → Release → "Run
 workflow", enter the version). The result is a draft release with
 installers, zip files and `SHA256SUMS.txt`; it becomes public only when it
-is published on GitHub. Every push also leaves an unsigned test build of
+is published on GitHub. Code signing is prepared in the same workflow and
+switched on once SignPath Foundation approves it, see
+[`.signpath/README.md`](.signpath/README.md). A dry run (tick "dry run")
+builds and checks everything without publishing. Every push also leaves an unsigned test build of
 the x64 programs on its CI run page.
 
 Layout: `cmd/ntp-sync` (command line and service), `gui` (the window),
@@ -223,3 +229,4 @@ Layout: `cmd/ntp-sync` (command line and service), `gui` (the window),
 ## License
 
 [MIT](LICENSE). Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Code signing policy: [CODE_SIGNING.md](CODE_SIGNING.md).

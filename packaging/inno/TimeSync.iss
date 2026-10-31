@@ -1,7 +1,7 @@
 ; Installer for TimeSync (Inno Setup 6).
 ;
 ; Built by .github/workflows/release.yml:
-;   ISCC /DAppVersion=2.0.0 /DArch=x64 /DSourceDir=<folder with the exes> TimeSync.iss
+;   ISCC /DAppVersion=2.0.0 /DNumericVersion=2.0.0 /DArch=x64 /DSourceDir=<folder with the exes> TimeSync.iss
 ;
 ; It installs TimeSync.exe and ntp-sync.exe to C:\Program Files\TimeSync
 ; and, if ticked, sets up the background service. Uninstalling removes the
@@ -9,6 +9,11 @@
 
 #ifndef AppVersion
   #define AppVersion "0.0.0"
+#endif
+; The file properties of the installer: product name and version must match
+; the programs inside, because code signing (SignPath) checks both.
+#ifndef NumericVersion
+  #define NumericVersion AppVersion
 #endif
 #ifndef Arch
   #define Arch "x64"
@@ -27,7 +32,12 @@ AppPublisher=burnersen
 AppPublisherURL=https://github.com/burnersen/TimeSync
 AppSupportURL=https://github.com/burnersen/TimeSync/issues
 AppUpdatesURL=https://github.com/burnersen/TimeSync/releases
-VersionInfoVersion={#AppVersion}
+VersionInfoVersion={#NumericVersion}
+VersionInfoProductName=TimeSync
+VersionInfoProductVersion={#NumericVersion}
+VersionInfoProductTextVersion={#NumericVersion}
+VersionInfoCompany=burnersen
+VersionInfoDescription=TimeSync Setup
 ; The service binary must live where only administrators can change it.
 DefaultDirName={autopf}\TimeSync
 DisableDirPage=yes

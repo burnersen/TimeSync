@@ -20,7 +20,7 @@ mkdir -p "$DIST"
 # Icon, version and manifest for ntp-sync.exe.
 (cd "$ROOT/cmd/ntp-sync" && go run github.com/tc-hib/go-winres@v0.3.3 make \
   --in winres/winres.json --out rsrc --arch amd64,arm64 \
-  --product-version "$WINVER" --file-version "$WINVER")
+  --product-version "${WINVER%.0}" --file-version "${WINVER%.0}")
 
 # The window reads its version for the file properties from wails.json.
 python3 - "$ROOT/gui/wails.json" "$WINVER" <<'PY' 2>/dev/null || sed -i.bak -E "s/\"productVersion\": \"[^\"]*\"/\"productVersion\": \"${WINVER%.0}\"/" "$ROOT/gui/wails.json"

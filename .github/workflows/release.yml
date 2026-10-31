@@ -3,10 +3,12 @@
 #   git tag v2.0.0 && git push origin v2.0.0
 #
 # or by hand: Actions > Release > "Run workflow", enter the version. Then
-# GitHub creates the tag itself when the draft is published.
+# the release creates the tag itself, on the commit that was built.
 #
-# The result is a DRAFT release: nothing becomes public until it is
-# reviewed and published by hand on GitHub.
+# The release is published right away, as soon as every step passed; if
+# any step fails, nothing is published. A version with a suffix (2.1.0-rc1)
+# is published as a pre-release. A leftover draft of the same version (as
+# older runs of this workflow made) is replaced.
 #
 # Dry run: tick "dry run" when starting it by hand. Everything is built and
 # checked, the files stay on the run page as a workflow artifact, nothing is
@@ -292,15 +294,28 @@ jobs:
             dist/SHA256SUMS.txt
           retention-days: 7
 
-      - uses: softprops/action-gh-release@v2
+      # gh is preinstalled on GitHub runners and signs in with the token this
+      # workflow already holds.
+      - name: publish
         if: env.DRY_RUN != 'true'
-        with:
-          draft: true
-          tag_name: v${{ steps.v.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          name: TimeSync ${{ steps.v.outputs.version }}
-          body_path: ${{ runner.temp }}/release-notes.md
-          files: |
-            dist/*.zip
-            dist/*.exe
-            dist/SHA256SUMS.txt
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v$env:VERSION"
+          $isDraft = gh release view $tag --json isDraft --jq .isDraft 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if ("$isDraft".Trim() -ne 'true') {
+              Write-Host "::error::release $tag exists already: raise the version first"
+              exit 1
+            }
+            Write-Host "Replacing the draft of $tag."
+            gh release delete $tag --yes
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+          $global:LASTEXITCODE = 0
+          $files = @(Get-ChildItem dist -File | Where-Object { $_.Extension -in '.zip', '.exe' } | ForEach-Object FullName)
+          $files += (Resolve-Path dist/SHA256SUMS.txt).Path
+          $extra = @()
+          if ($env:VERSION -match '-') { $extra += '--prerelease' }
+          gh release create $tag @files --target $env:GITHUB_SHA --title "TimeSync $env:VERSION" --notes-file "$env:RUNNER_TEMP/release-notes.md" @extra
+          if ($LASTEXITCODE -ne 0) { exit 1 }

@@ -13,6 +13,12 @@ battery, a company network that blocks the time port.
 
 🌐 Website: [tech.burnersen.de/en/tools/timesync-en](https://tech.burnersen.de/en/tools/timesync-en/) · 🇩🇪 Auf Deutsch: [tech.burnersen.de/tools/timesync](https://tech.burnersen.de/tools/timesync/)
 
+> 💜 **Using TimeSync and happy with it?** A ⭐ on GitHub is the easiest way to let me know,
+> and it does more than you'd think: stars are how small projects like this one qualify for
+> free code signing, which makes the Windows warning go away for everyone. Or
+> [tell me what you use it for](https://github.com/burnersen/TimeSync/issues/new), I read every message.
+> Thanks for being here!
+
 <p>
   <img src="docs/screenshot-overview.png" width="32%" alt="Overview: PC time next to the actual time, the offset and the background service status">
   <img src="docs/screenshot-dualboot.png" width="32%" alt="A note explaining a one hour difference caused by dual boot with Linux">

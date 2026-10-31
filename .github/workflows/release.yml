@@ -280,6 +280,14 @@ jobs:
           } else {
             $footer = "The Windows files of this release are not code signed, so Windows SmartScreen may warn. [Code signing policy]($policy)"
           }
+          # A friendly line for the people who read release texts: the ones
+          # updating, who are happy enough to stay.
+          $repo = "https://github.com/$env:GITHUB_REPOSITORY"
+          if ($env:SIGNED -eq 'true') {
+              $footer += "`n`n💜 Happy with TimeSync? A ⭐ on [GitHub]($repo) is the easiest way to let me know, and it helps others find it. Or [tell me what you use it for]($repo/issues/new)."
+          } else {
+              $footer += "`n`n💜 Happy with TimeSync? A ⭐ on [GitHub]($repo) is the easiest way to let me know, and it helps TimeSync qualify for free code signing, so the Windows warning goes away for everyone. Or [tell me what you use it for]($repo/issues/new)."
+          }
           $text = [IO.File]::ReadAllText("CHANGELOG.md") + "`n---`n`n$footer`n"
           [IO.File]::WriteAllText("$env:RUNNER_TEMP/release-notes.md", $text, [Text.UTF8Encoding]::new($false))
 

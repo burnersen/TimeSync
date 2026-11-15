@@ -11,7 +11,15 @@ to the actual time and explains the usual suspects: dual boot with Linux, a
 wrong time zone, automatic daylight saving time switched off, a weak CMOS
 battery, a company network that blocks the time port.
 
-🌐 Website: [tech.burnersen.de/en/tools/timesync-en](https://tech.burnersen.de/en/tools/timesync-en/) · 🇩🇪 Auf Deutsch: [tech.burnersen.de/tools/timesync](https://tech.burnersen.de/tools/timesync/)
+[![Windows x64 / ARM64](https://img.shields.io/badge/Windows-10%2F11%20x64%20%7C%20ARM64-0078D6?logo=windows)](#whats-in-the-box)
+[![Built with Wails](https://img.shields.io/badge/Built%20with-Wails%20v2-DF0000)](#building)
+[![Written in Go](https://img.shields.io/badge/Made%20with-Go-00ADD8?logo=go)](#building)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue)](#license)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20me-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/burnersen)
+
+**[⬇️ Download the latest release](https://github.com/burnersen/TimeSync/releases/latest)** · **[🌐 Website](https://tech.burnersen.de/en/tools/timesync-en/)** · **[🔏 Code signing policy](CODE_SIGNING.md)** · **[☕ Buy me a coffee](https://ko-fi.com/burnersen)**
+
+<sub>🇩🇪 Auf Deutsch: [tech.burnersen.de/tools/timesync](https://tech.burnersen.de/tools/timesync/)</sub>
 
 > 💜 **Using TimeSync and happy with it?** A ⭐ on GitHub is the easiest way to let me know,
 > and it does more than you'd think: stars are how small projects like this one qualify for
@@ -231,6 +239,10 @@ Layout: `cmd/ntp-sync` (command line and service), `gui` (the window),
 `internal/source` (asking servers), `internal/engine` (deciding),
 `internal/syncer` (one round), `internal/service`, `internal/winsys`
 (Windows calls), `internal/ipc` (named pipe between window and service).
+
+## ☕ Support
+
+TimeSync is free and made in my spare time, on my own hardware and electricity bill. If it saved you time or a lot of head-scratching about a wrong clock and you'd like to say thanks, you can [drop a little something in the tip jar on Ko-fi](https://ko-fi.com/burnersen), it keeps motivation and coffee flowing. ☕ Completely optional, and either way: thank you for using it!
 
 ## License
 

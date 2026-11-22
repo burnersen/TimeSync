@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.2 (2026-11-22)
+
+Security update. TimeSync itself works exactly as in 2.0.1.
+
+- **Built with Go 1.26.11**, which fixes a flaw in Go's own HTTP code
+  (GO-2026-6859). TimeSync uses that code when it asks time servers over
+  HTTPS and NTS, so updating is recommended.
+- **Updated library:** echo 4.16.3 (part of the window's framework).
+- **README:** a clear disclaimer: TimeSync is free hobby software without
+  any warranty.
+
 ## 2.0.1 (2026-10-31)
 
 Built on GitHub, ready for code signing. TimeSync itself works exactly as

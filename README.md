@@ -36,6 +36,8 @@ battery, a company network that blocks the time port.
 The window speaks German and English and follows the Windows light or dark
 theme. What changed in version 2.0: [CHANGELOG.md](CHANGELOG.md).
 
+> ⚠️ **Before you start:** TimeSync is free hobby software without any warranty, and you use it at your own risk. It changes the Windows clock and the Windows Time service. Details in the disclaimer at the end.
+
 ## What's in the box
 
 | File | What it is |
@@ -243,6 +245,12 @@ Layout: `cmd/ntp-sync` (command line and service), `gui` (the window),
 ## ☕ Support
 
 TimeSync is free and made in my spare time, on my own hardware and electricity bill. If it saved you time or a lot of head-scratching about a wrong clock and you'd like to say thanks, you can [drop a little something in the tip jar on Ko-fi](https://ko-fi.com/burnersen), it keeps motivation and coffee flowing. ☕ Completely optional, and either way: thank you for using it!
+
+## ⚠️ Disclaimer
+
+TimeSync is free hobby software, provided **"as is", without any warranty or condition of any kind**. It was built and tested with care, but you use it **at your own risk**. It changes the Windows clock and the configuration of the Windows Time service. On a PC managed by a company or a domain, ask your administrator first.
+
+Where this README describes what TimeSync does, checks or never does, that is how it is designed to work, not a promise or guarantee: software can have bugs, and systems, services and other programs do not always behave as expected. As far as the applicable law allows, the author is not liable for any damages or data loss arising from the use of this software. See the [license](LICENSE).
 
 ## License
 
